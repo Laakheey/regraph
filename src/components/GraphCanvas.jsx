@@ -3,6 +3,12 @@ import { Icon } from './Icons';
 
 export const NODE_WIDTH = 220;
 export const NODE_HEIGHT = 72;
+const MAX_CANVAS_Y = 960;
+const DOMAIN_NODE_IDS = {
+  'hisd-domain': ['hisd', 'jackson-ms', 'hft', 'santos'],
+  'sas-domain': ['sas', 'assessment', 'student-data', 'evaas'],
+  'gaps-domain': ['gap']
+};
 
 // Calculate clean cubic bezier paths that smoothly curve around and connect card borders
 export function getCurvedPath(from, to, offset = 0) {
@@ -25,8 +31,8 @@ export function getCurvedPath(from, to, offset = 0) {
 
   // 2. santos → jackson-ms: route through the open lane between rows one and two.
   if (from.id === 'santos' && to.id === 'jackson-ms') {
-    const startX = from.x - 6;
-    const startY = from.y + NODE_HEIGHT / 2;
+    const startX = from.x;
+    const startY = from.y + NODE_HEIGHT;
     const laneY = 170;
     const endX = to.x + NODE_WIDTH / 2;
     const endY = to.y - 6;
@@ -51,21 +57,15 @@ export function getCurvedPath(from, to, offset = 0) {
     return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
   }
 
-  // 4. hft → disclosure: bottom-margin arc, offset 60px below the prior route.
+  // 4. hft → disclosure: orthogonal footer route below the Responsibility Gaps domain.
   if (from.id === 'hft' && to.id === 'disclosure') {
     const startX = from.x + NODE_WIDTH / 2;
     const startY = from.y + NODE_HEIGHT;
     const endX   = to.x + NODE_WIDTH / 2;
     const endY   = to.y + NODE_HEIGHT;
-    const cy     = 1020;
-    const cx1    = startX;
-    const cy1    = cy;
-    const cx2    = endX;
-    const cy2    = cy;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
-    return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
+    const footerY = MAX_CANVAS_Y - 20;
+    const d = `M ${startX} ${startY} V ${footerY} H ${endX} V ${endY}`;
+    return { d, startX, startY, endX, endY, midX: (startX + endX) / 2, midY: footerY };
   }
 
   const isLtoR = to.x >= from.x + 80;
@@ -243,6 +243,21 @@ export const GraphCanvas = ({
 
   const getNode = useCallback((id) => nodes.find((n) => n.id === id), [nodes]);
 
+  // Boundaries follow their members with 40px of breathing room, including after a drag.
+  const domains = useMemo(() => (matter.domains || []).map((domain) => {
+    const members = (DOMAIN_NODE_IDS[domain.id] || [])
+      .map((id) => nodes.find((node) => node.id === id))
+      .filter(Boolean);
+    if (!members.length) return domain;
+
+    const minX = Math.min(...members.map((node) => node.x)) - 40;
+    const minY = Math.min(...members.map((node) => node.y)) - 40;
+    const maxX = Math.max(...members.map((node) => node.x + NODE_WIDTH)) + 40;
+    const maxY = Math.max(...members.map((node) => node.y + NODE_HEIGHT)) + 40;
+
+    return { ...domain, x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }), [matter.domains, nodes]);
+
   // Compute 1-hop neighborhood for selection focus
   const neighborIds = useMemo(() => {
     if (!selectedNodeId) return new Set();
@@ -288,9 +303,8 @@ export const GraphCanvas = ({
           transformOrigin: '0 0'
         }}
       >
-        {/* 3 Domain Combos */}
-        {matter.domains &&
-          matter.domains.map((d) => (
+        {/* Container boundaries render first; header badges render after the SVG layer. */}
+        {domains.map((d) => (
             <div
               key={d.id}
               className="domain-box"
@@ -301,19 +315,7 @@ export const GraphCanvas = ({
                 height: d.h,
                 borderColor: d.borderColor
               }}
-            >
-              <div
-                className={[
-                  'domain-pill',
-                  d.id === 'hisd-domain' ? 'domain-pill-hisd' :
-                  d.id === 'sas-domain'  ? 'domain-pill-sas'  :
-                  d.id === 'gaps-domain' ? 'domain-pill-gaps'  : ''
-                ].join(' ').trim()}
-                style={{ backgroundColor: d.badgeBg }}
-              >
-                {d.name}
-              </div>
-            </div>
+            />
           ))}
 
         {/* SVG Edges and Badges */}
@@ -415,9 +417,9 @@ export const GraphCanvas = ({
 
             const lx = pathInfo.midX + (link.midXOff || 0);
             const ly = pathInfo.midY + (link.midYOff || 0);
-            const isSoughtRecords = link.label === 'SOUGHT RECORDS';
-            const badgePadding = isSoughtRecords ? 4 : 10;
-            const badgeHeight = isSoughtRecords ? 18 : 22;
+            // Every SVG label gets an opaque 2px × 6px backing pill.
+            const badgePadding = 6;
+            const badgeHeight = 14;
             const hw = link.label.length * 3.4 + badgePadding;
 
             return (
@@ -447,6 +449,26 @@ export const GraphCanvas = ({
           })}
 
         </svg>
+
+        {/* This post-SVG header layer prevents any boundary stroke from crossing badge text. */}
+        {domains.map((d) => (
+            <div
+              key={`${d.id}-header`}
+              className={[
+                'domain-pill',
+                d.id === 'hisd-domain' ? 'domain-pill-hisd' :
+                d.id === 'sas-domain'  ? 'domain-pill-sas'  :
+                d.id === 'gaps-domain' ? 'domain-pill-gaps'  : ''
+              ].join(' ').trim()}
+              style={{
+                left: d.x + 16,
+                top: d.y + (d.id === 'gaps-domain' ? 26 : 14),
+                backgroundColor: d.badgeBg
+              }}
+            >
+              {d.name}
+            </div>
+          ))}
 
         {/* Node Cards (Draggable, Non-truncated, Focused / Dimmed states) */}
         {nodes.map((node) => {

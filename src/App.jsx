@@ -35,8 +35,8 @@ export const App = () => {
   const [isLegalAssistantOpen, setIsLegalAssistantOpen] = useState(false);
 
   // Zoom and Pan Playground State
-  const [zoom, setZoom] = useState(0.92);
-  const [pan, setPan] = useState({ x: 25, y: 15 });
+  const [zoom, setZoom] = useState(0.52);
+  const [pan, setPan] = useState({ x: 15, y: 110 });
 
   // Reset to Default Overview when matter changes
   useEffect(() => {
@@ -54,14 +54,20 @@ export const App = () => {
   };
 
   const handleFitView = () => {
-    setZoom(0.92);
-    setPan({ x: 25, y: 15 });
+    setZoom(0.52);
+    setPan({ x: 15, y: 110 });
   };
 
   // Reset to Default Full View (All elements 100% opacity, centered)
   const handleResetOverview = () => {
     setSelectedNodeId(null);
     handleFitView();
+  };
+
+  const handleSearchChange = (query) => {
+    setSearchQuery(query);
+    // Search always targets the graph view, where matching nodes and edges are filtered.
+    if (query.trim()) setActiveView('agent-activity');
   };
 
   // Export 1: Full structured legal investigation report PDF
@@ -121,7 +127,7 @@ export const App = () => {
           onExportDiagramPdf={handleExportDiagramPdf}
           onExportReportPdf={handleExportReportPdf}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
           onOpenLegalAssistant={() => setIsLegalAssistantOpen(true)}
         />
 

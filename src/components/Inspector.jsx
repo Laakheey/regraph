@@ -208,7 +208,7 @@ export const Inspector = ({ node, onClose, onOpenRunDetails, onSelectNode, nodes
             <span className="attr-key">
               <Icon name="person" size={12} /> Human Checkpoint
             </span>
-            <span className="attr-val">
+            <span className="attr-val wrap-text">
               <span className={`badge-pill wrap-pill ${getPillClass(node.humanCheckpoint)}`}>
                 {node.humanCheckpoint}
               </span>

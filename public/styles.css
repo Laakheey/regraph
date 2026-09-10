@@ -1,7 +1,3 @@
-/* ==========================================================================
-   EBRR TRACE™ Design System & Zoomable Playground Styles
-   ========================================================================== */
-
 :root {
   --bg-app: #f4f6fb;
   --bg-card: #ffffff;
@@ -458,7 +454,7 @@ input {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
   white-space: nowrap;
-  z-index: 50;
+  z-index: 20;
   pointer-events: none;
 }
 
@@ -466,11 +462,6 @@ input {
 .domain-pill-hisd   { background-color: #4F46E5; }
 .domain-pill-sas    { background-color: #0284C7; }
 .domain-pill-gaps   { background-color: #EA580C; }
-
-/* HISD badge override — inside box position */
-.domain-pill-hisd {
-  top: 14px;
-}
 
 /* SVG Edges and Badges */
 .edges-svg {
@@ -1042,7 +1033,7 @@ input {
 
 .attr-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   font-size: 11px;
   padding: 3px 0;
@@ -1054,12 +1045,15 @@ input {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 104px;
 }
 
 .attr-val {
   font-weight: 600;
   color: #1e293b;
   text-align: right;
+  min-width: 0;
+  flex: 1;
   max-width: 170px;
   white-space: normal;
   word-break: break-word;
@@ -2202,7 +2196,8 @@ input {
   flex-direction: column;
   gap: 4px;
   overflow: hidden;
-  height: 82px;
+  min-height: 104px;
+  height: auto;
   box-sizing: border-box;
 }
 
@@ -2211,10 +2206,9 @@ input {
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  overflow-y: hidden;
-  padding: 2px 2px 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  overflow-y: visible;
+  padding: 2px;
+  scrollbar-width: none;
 }
 
 .seq-card {
@@ -2225,13 +2219,14 @@ input {
   border: 1.5px solid var(--border-light);
   border-radius: 9px;
   padding: 6px 12px;
-  min-width: 195px;
-  max-width: 240px;
-  height: 48px;
+  min-width: 230px;
+  max-width: 280px;
+  min-height: 58px;
+  height: auto;
   box-sizing: border-box;
   flex-shrink: 0;
   text-align: left;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -2258,7 +2253,7 @@ input {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .seq-info b {
@@ -2267,9 +2262,8 @@ input {
   font-weight: 700;
   color: #0f172a;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
   flex-shrink: 0;
 }
 
@@ -2279,9 +2273,8 @@ input {
   color: var(--text-muted);
   line-height: 1.2;
   margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
   flex-shrink: 0;
 }
 
@@ -2293,7 +2286,8 @@ input {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  height: 46px;
+  min-height: 46px;
+  height: auto;
   font-size: 11px;
   position: relative;
   box-sizing: border-box;
@@ -2302,9 +2296,7 @@ input {
 .legend-chips-container {
   min-width: 0;
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+  overflow: visible;
 }
 
 .legend-chips-container::-webkit-scrollbar {
@@ -2315,7 +2307,8 @@ input {
   display: flex;
   align-items: center;
   gap: 14px;
-  white-space: nowrap;
+  white-space: normal;
+  flex-wrap: wrap;
   padding: 4px 2px;
 }
 

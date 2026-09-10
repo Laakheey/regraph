@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icons';
 
-// Canonical column x-positions (must match incidentsData.jsx)
-const COL_X = { 1: 55, 2: 375, 3: 690, 4: 1005 };
-
 export const LegendAndControls = ({
   zoom,
   onZoomIn,
@@ -14,37 +11,18 @@ export const LegendAndControls = ({
   onExportReportPdf,
   onExportDiagramPdf,
   onExportDiagramPng,
-  nodes,
-  setNodes
+  nodes
 }) => {
   const [exportOpen, setExportOpen] = useState(false);
 
-  // Cleanup pass: snap every node back to its canonical column x before export
-  const runLayoutCleanup = () => {
-    if (!setNodes) return;
-    setNodes((prev) =>
-      prev.map((n) => {
-        const colX = COL_X[n.col];
-        return colX !== undefined ? { ...n, x: colX } : n;
-      })
-    );
-  };
-
   const handleExportDiagramPdf = () => {
-    runLayoutCleanup();
-    // Small delay so React re-renders the cleaned positions before exporting
-    setTimeout(() => {
-      onExportDiagramPdf();
-      setExportOpen(false);
-    }, 80);
+    onExportDiagramPdf();
+    setExportOpen(false);
   };
 
   const handleExportDiagramPng = () => {
-    runLayoutCleanup();
-    setTimeout(() => {
-      onExportDiagramPng();
-      setExportOpen(false);
-    }, 80);
+    onExportDiagramPng();
+    setExportOpen(false);
   };
 
   const legendItems = [
@@ -87,7 +65,7 @@ export const LegendAndControls = ({
           <button
             className="control-btn pdf-export-btn"
             onClick={() => setExportOpen(!exportOpen)}
-            title="Download visual diagram snapshot as PDF or PNG (auto-cleans layout)"
+            title="Download visual diagram snapshot as PDF or PNG at the current node positions"
           >
             <Icon name="pdf" size={13} />
             <span>Export Diagram</span>
@@ -103,7 +81,7 @@ export const LegendAndControls = ({
                 <Icon name="pdf" size={13} />
                 <div>
                   <b>Diagram Snapshot (PDF)</b>
-                  <small>Auto-cleans layout · retains your positions</small>
+                  <small>Uses the current preset or dragged positions</small>
                 </div>
               </button>
 

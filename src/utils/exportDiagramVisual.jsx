@@ -1,5 +1,6 @@
 const NODE_WIDTH = 220;
 const NODE_HEIGHT = 72;
+const MAX_CANVAS_Y = 960;
 
 // Color themes for SVG / Canvas node rendering
 const THEMES = {
@@ -34,20 +35,16 @@ export function getCurvedPathStatic(from, to, offset = 0) {
     return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
   }
 
-  // 2. santos → jackson-ms: TOP-PERIMETER arc above HISD domain box (above y=40)
+  // 2. santos → jackson-ms: orthogonal route through the open lane between rows.
   if (from.id === 'santos' && to.id === 'jackson-ms') {
-    const startX = from.x + NODE_WIDTH / 2;
-    const startY = from.y - 6;
+    const startX = from.x;
+    const startY = from.y + NODE_HEIGHT;
     const endX   = to.x + NODE_WIDTH / 2;
     const endY   = to.y - 6;
-    const cx1 = startX - 280;
-    const cy1 = -55;
-    const cx2 = endX + 280;
-    const cy2 = -55;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
-    return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
+    const routeX = from.x - 50;
+    const laneY = 170 + (from.y - 0);
+    const d = `M ${startX} ${startY} H ${routeX} V ${laneY} H ${endX} V ${endY}`;
+    return { d, startX, startY, endX, endY, midX: (routeX + endX) / 2, midY: laneY, kind: 'orthogonal', points: [[routeX, startY], [routeX, laneY], [endX, laneY], [endX, endY]] };
   }
 
   // 3. hft → hisd: curve RIGHT then UP, skirting around jackson-ms right border cleanly
@@ -66,21 +63,15 @@ export function getCurvedPathStatic(from, to, offset = 0) {
     return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
   }
 
-  // 4. hft → disclosure: bottom-margin arc, cy=960 so label falls below Gaps box bottom
+  // 4. hft → disclosure: orthogonal footer route.
   if (from.id === 'hft' && to.id === 'disclosure') {
     const startX = from.x + NODE_WIDTH / 2;
     const startY = from.y + NODE_HEIGHT;
     const endX   = to.x + NODE_WIDTH / 2;
     const endY   = to.y + NODE_HEIGHT;
-    const cy     = 960;
-    const cx1    = startX;
-    const cy1    = cy;
-    const cx2    = endX;
-    const cy2    = cy;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
-    return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
+    const footerY = MAX_CANVAS_Y - 20 + (from.y - 350);
+    const d = `M ${startX} ${startY} V ${footerY} H ${endX} V ${endY}`;
+    return { d, startX, startY, endX, endY, midX: (startX + endX) / 2, midY: footerY, kind: 'orthogonal', points: [[startX, footerY], [endX, footerY], [endX, endY]] };
   }
 
   const isLtoR = to.x >= from.x + 80;
@@ -225,7 +216,7 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
     const markerUrl = isAlert ? 'url(#arrow-alert)' : isPipeline ? 'url(#arrow-pipeline)' : 'url(#arrow-structural)';
     const dashArray = isAlert ? '5 4' : 'none';
 
-    const badgeFill = isAlert ? '#fff7ed' : isPipeline ? '#f0f9ff' : '#ffffff';
+    const badgeFill = '#ffffff';
     const badgeStroke = isAlert ? '#fed7aa' : isPipeline ? '#bae6fd' : '#cbd5e1';
     const textColor = isAlert ? '#c2410c' : isPipeline ? '#0369a1' : '#334155';
 
@@ -242,11 +233,11 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
         ${link.label ? `
           <g transform="translate(${p.midX}, ${p.midY})">
             <rect
-              x="${-(link.label.length * 3.4 + 10)}"
-              y="-11"
-              width="${link.label.length * 6.8 + 20}"
-              height="22"
-              rx="5"
+              x="${-(link.label.length * 3.4 + 6)}"
+              y="-7"
+              width="${link.label.length * 6.8 + 12}"
+              height="14"
+              rx="4"
               fill="${badgeFill}"
               stroke="${badgeStroke}"
               stroke-width="1.2"
@@ -533,7 +524,7 @@ export const exportDiagramPng = ({ matter, nodes }) => {
     const isPipeline = category === 'pipeline';
 
     const strokeColor = isAlert ? '#ea580c' : isPipeline ? '#0284c7' : '#475569';
-    const badgeFill = isAlert ? '#fff7ed' : isPipeline ? '#f0f9ff' : '#ffffff';
+    const badgeFill = '#ffffff';
     const badgeStroke = isAlert ? '#fed7aa' : isPipeline ? '#bae6fd' : '#cbd5e1';
     const textColor = isAlert ? '#c2410c' : isPipeline ? '#0369a1' : '#334155';
 
@@ -544,10 +535,15 @@ export const exportDiagramPng = ({ matter, nodes }) => {
 
     ctx.beginPath();
     ctx.moveTo(p.startX, p.startY);
-    ctx.bezierCurveTo(p.cx1, p.cy1, p.cx2, p.cy2, p.endX, p.endY);
+    if (p.kind === 'orthogonal') {
+      p.points.forEach(([x, y]) => ctx.lineTo(x, y));
+    } else {
+      ctx.bezierCurveTo(p.cx1, p.cy1, p.cx2, p.cy2, p.endX, p.endY);
+    }
     ctx.stroke();
 
-    const angle = Math.atan2(p.endY - p.cy2, p.endX - p.cx2);
+    const priorPoint = p.kind === 'orthogonal' ? p.points[p.points.length - 2] : [p.cx2, p.cy2];
+    const angle = Math.atan2(p.endY - priorPoint[1], p.endX - priorPoint[0]);
     ctx.setLineDash([]);
     ctx.fillStyle = strokeColor;
     ctx.beginPath();
@@ -559,13 +555,13 @@ export const exportDiagramPng = ({ matter, nodes }) => {
 
     if (l.label) {
       const textWidth = l.label.length * 6.6;
-      const bw = textWidth + 18;
-      const bh = 20;
+      const bw = textWidth + 12;
+      const bh = 14;
 
       ctx.fillStyle = badgeFill;
       ctx.strokeStyle = badgeStroke;
       ctx.lineWidth = 1.2;
-      roundRect(ctx, p.midX - bw / 2, p.midY - bh / 2, bw, bh, 5);
+      roundRect(ctx, p.midX - bw / 2, p.midY - bh / 2, bw, bh, 4);
       ctx.fill();
       ctx.stroke();
 
