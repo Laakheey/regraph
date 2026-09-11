@@ -3,125 +3,58 @@ import { Icon } from './Icons';
 
 export const NODE_WIDTH = 220;
 export const NODE_HEIGHT = 72;
-const MAX_CANVAS_Y = 960;
 const DOMAIN_NODE_IDS = {
-  'hisd-domain': ['hisd', 'jackson-ms', 'hft', 'santos'],
-  'sas-domain': ['sas', 'assessment', 'student-data', 'evaas'],
-  'gaps-domain': ['gap']
+  'hisd-domain': ['hisd', 'jackson-ms', 'hft', 'assessment', 'student-data'],
+  'sas-domain': ['sas', 'evaas'],
+  'gaps-domain': ['gap', 'disclosure']
 };
 
-// Calculate clean cubic bezier paths that smoothly curve around and connect card borders
-export function getCurvedPath(from, to, offset = 0) {
-  // 1. score → santos: SHORT direct vertical — Santos directly above Score in Col 4
-  if (from.id === 'score' && to.id === 'santos') {
-    const startX = from.x + NODE_WIDTH / 2;
-    const startY = from.y;
-    const endX   = to.x + NODE_WIDTH / 2;
-    const endY   = to.y + NODE_HEIGHT + 4;
-    const dy     = Math.max(startY - endY, 20);
-    const cx1 = startX;
-    const cy1 = startY - dy * 0.5;
-    const cx2 = endX;
-    const cy2 = endY + dy * 0.5;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
-    return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
-  }
+// Deterministic Manhattan routing: every segment is horizontal or vertical.
+export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
+  const sideFor = (node, other) => {
+    const dx = other.x + NODE_WIDTH / 2 - (node.x + NODE_WIDTH / 2);
+    const dy = other.y + NODE_HEIGHT / 2 - (node.y + NODE_HEIGHT / 2);
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+    return dy >= 0 ? 'bottom' : 'top';
+  };
+  const fromSide = sideFor(from, to);
+  const toSide = sideFor(to, from);
+  const distributedPort = (node, side, isSource) => {
+    const siblings = allLinks.filter((candidate) => {
+      const endpointId = isSource ? candidate.from : candidate.to;
+      if (endpointId !== node.id) return false;
+      const otherId = isSource ? candidate.to : candidate.from;
+      const other = allNodes.find((item) => item.id === otherId);
+      return other && sideFor(node, other) === side;
+    });
+    const index = siblings.indexOf(link);
+    const offset = (index - (siblings.length - 1) / 2) * 12;
+    if (side === 'left') return { x: node.x, y: node.y + NODE_HEIGHT / 2 + offset };
+    if (side === 'right') return { x: node.x + NODE_WIDTH, y: node.y + NODE_HEIGHT / 2 + offset };
+    if (side === 'top') return { x: node.x + NODE_WIDTH / 2 + offset, y: node.y };
+    return { x: node.x + NODE_WIDTH / 2 + offset, y: node.y + NODE_HEIGHT };
+  };
 
-  // 2. santos → jackson-ms: route through the open lane between rows one and two.
-  if (from.id === 'santos' && to.id === 'jackson-ms') {
-    const startX = from.x;
-    const startY = from.y + NODE_HEIGHT;
-    const laneY = 170;
-    const endX = to.x + NODE_WIDTH / 2;
-    const endY = to.y - 6;
-    const routeX = 985; // Left of the score card, keeping the descent collision-free.
-    const d = `M ${startX} ${startY} H ${routeX} V ${laneY} H ${endX} V ${endY}`;
-    return { d, startX, startY, endX, endY, midX: (routeX + endX) / 2, midY: laneY };
-  }
-
-  // 3. hft → hisd: curve RIGHT then UP, skirting around jackson-ms right border cleanly
-  if (from.id === 'hft' && to.id === 'hisd') {
-    const startX = from.x + NODE_WIDTH;
-    const startY = from.y + NODE_HEIGHT / 2;
-    const endX   = to.x;
-    const endY   = to.y + NODE_HEIGHT / 2;
-    const cx1 = startX + 160;
-    const cy1 = startY + 60;
-    const cx2 = endX - 60;
-    const cy2 = endY + 80;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
-    return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
-  }
-
-  // 4. hft → disclosure: orthogonal footer route below the Responsibility Gaps domain.
-  if (from.id === 'hft' && to.id === 'disclosure') {
-    const startX = from.x + NODE_WIDTH / 2;
-    const startY = from.y + NODE_HEIGHT;
-    const endX   = to.x + NODE_WIDTH / 2;
-    const endY   = to.y + NODE_HEIGHT;
-    const footerY = MAX_CANVAS_Y - 20;
-    const d = `M ${startX} ${startY} V ${footerY} H ${endX} V ${endY}`;
-    return { d, startX, startY, endX, endY, midX: (startX + endX) / 2, midY: footerY };
-  }
-
-  const isLtoR = to.x >= from.x + 80;
-  const isRtoL = to.x < from.x - 80;
-
-  let startX, startY, endX, endY, cx1, cy1, cx2, cy2;
-
-  if (isLtoR) {
-    startX = from.x + NODE_WIDTH;
-    startY = from.y + NODE_HEIGHT / 2 + offset;
-    endX = to.x - 6;
-    endY = to.y + NODE_HEIGHT / 2 + offset;
-    const dx = Math.max(endX - startX, 45);
-    cx1 = startX + dx * 0.45;
-    cy1 = startY;
-    cx2 = endX - dx * 0.45;
-    cy2 = endY;
-  } else if (isRtoL) {
-    startX = from.x;
-    startY = from.y + NODE_HEIGHT / 2 + offset;
-    endX = to.x + NODE_WIDTH + 6;
-    endY = to.y + NODE_HEIGHT / 2 + offset;
-    const dx = Math.max(startX - endX, 45);
-    cx1 = startX - dx * 0.45;
-    cy1 = startY;
-    cx2 = endX + dx * 0.45;
-    cy2 = endY;
-  } else {
-    if (to.y >= from.y) {
-      startX = from.x + NODE_WIDTH / 2;
-      startY = from.y + NODE_HEIGHT;
-      endX = to.x + NODE_WIDTH / 2;
-      endY = to.y - 6;
-      const dy = Math.max(endY - startY, 35);
-      cx1 = startX;
-      cy1 = startY + dy * 0.45;
-      cx2 = endX;
-      cy2 = endY - dy * 0.45;
-    } else {
-      startX = from.x + NODE_WIDTH / 2;
-      startY = from.y;
-      endX = to.x + NODE_WIDTH / 2;
-      endY = to.y + NODE_HEIGHT + 6;
-      const dy = Math.max(startY - endY, 35);
-      cx1 = startX;
-      cy1 = startY - dy * 0.45;
-      cx2 = endX;
-      cy2 = endY + dy * 0.45;
-    }
-  }
-
-  const d = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-  const midX = 0.125 * startX + 0.375 * cx1 + 0.375 * cx2 + 0.125 * endX;
-  const midY = 0.125 * startY + 0.375 * cy1 + 0.375 * cy2 + 0.125 * endY;
-
-  return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
+  const start = distributedPort(from, fromSide, true);
+  const end = distributedPort(to, toSide, false);
+  const horizontalFirst = fromSide === 'left' || fromSide === 'right';
+  const trackOffset = (allLinks.indexOf(link) % 3 - 1) * 12;
+  const points = horizontalFirst
+    ? [start, { x: (start.x + end.x) / 2 + trackOffset, y: start.y }, { x: (start.x + end.x) / 2 + trackOffset, y: end.y }, end]
+    : [start, { x: start.x, y: (start.y + end.y) / 2 + trackOffset }, { x: end.x, y: (start.y + end.y) / 2 + trackOffset }, end];
+  const d = points.reduce((path, point, index) => `${path}${index ? ` L ${point.x} ${point.y}` : `M ${point.x} ${point.y}`}`, '');
+  const segments = points.slice(1).map((point, index) => ({ start: points[index], end: point }));
+  const labelSegment = segments.reduce((longest, segment) => {
+    const length = Math.abs(segment.end.x - segment.start.x) + Math.abs(segment.end.y - segment.start.y);
+    const longestLength = Math.abs(longest.end.x - longest.start.x) + Math.abs(longest.end.y - longest.start.y);
+    return length > longestLength ? segment : longest;
+  });
+  return {
+    d,
+    points,
+    midX: (labelSegment.start.x + labelSegment.end.x) / 2,
+    midY: (labelSegment.start.y + labelSegment.end.y) / 2
+  };
 }
 
 export const GraphCanvas = ({
@@ -368,7 +301,7 @@ export const GraphCanvas = ({
             if (!from || !to) return null;
 
             const category = link.category || 'structural';
-            const pathInfo  = getCurvedPath(from, to, 0);
+            const pathInfo = getOrthogonalPath(from, to, link, matter.links, nodes);
 
             const markerId =
               category === 'alert'    ? 'arrow-alert'    :
@@ -400,7 +333,7 @@ export const GraphCanvas = ({
             if (!from || !to || !link.label) return null;
 
             const category  = link.category || 'structural';
-            const pathInfo   = getCurvedPath(from, to, 0);
+            const pathInfo = getOrthogonalPath(from, to, link, matter.links, nodes);
 
             const badgeClass =
               category === 'alert'    ? 'badge-alert'    :
@@ -415,8 +348,8 @@ export const GraphCanvas = ({
             const isEdgeFocused =
               !selectedNodeId || link.from === selectedNodeId || link.to === selectedNodeId;
 
-            const lx = pathInfo.midX + (link.midXOff || 0);
-            const ly = pathInfo.midY + (link.midYOff || 0);
+            const lx = pathInfo.midX;
+            const ly = pathInfo.midY;
             // Every SVG label gets an opaque 2px × 6px backing pill.
             const badgePadding = 6;
             const badgeHeight = 14;
@@ -462,7 +395,7 @@ export const GraphCanvas = ({
               ].join(' ').trim()}
               style={{
                 left: d.x + 16,
-                top: d.y + (d.id === 'gaps-domain' ? 26 : 14),
+                top: d.y + 16,
                 backgroundColor: d.badgeBg
               }}
             >
@@ -484,9 +417,10 @@ export const GraphCanvas = ({
           return (
             <div
               key={node.id}
-              className={`node-card kind-${node.kind} ${isSelected ? 'selected' : ''} ${
+              className={`node-card kind-${node.kind} ${node.id === 'hisd' ? 'central-hub' : ''} ${isSelected ? 'selected' : ''} ${
                 isDragging ? 'dragging' : ''
               } ${isDimmed ? 'is-dimmed' : ''} ${searchQuery && isMatch ? 'search-match' : ''}`}
+              data-node-id={node.id}
               style={{
                 left: node.x,
                 top: node.y,

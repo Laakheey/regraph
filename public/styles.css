@@ -438,7 +438,8 @@ input {
   border: 1.5px dashed var(--purple-border);
   border-radius: 14px;
   pointer-events: none;
-  background: rgba(245, 243, 255, 0.25);
+  background: rgba(255, 255, 255, 0.34);
+  z-index: 0;
 }
 
 .domain-pill {
@@ -454,7 +455,7 @@ input {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
   white-space: nowrap;
-  z-index: 20;
+  z-index: 30;
   pointer-events: none;
 }
 
@@ -507,17 +508,17 @@ input {
 
 .edge-badge-rect.badge-structural {
   fill: #ffffff;
-  stroke: #cbd5e1;
+  stroke: #E2E8F0;
 }
 
 .edge-badge-rect.badge-pipeline {
   fill: #ffffff;
-  stroke: #bae6fd;
+  stroke: #E2E8F0;
 }
 
 .edge-badge-rect.badge-alert {
   fill: #ffffff;
-  stroke: #fed7aa;
+  stroke: #E2E8F0;
 }
 
 .edge-badge-text {
@@ -565,6 +566,17 @@ input {
   border-color: var(--purple-brand);
   box-shadow: 0 0 0 3px rgba(79, 53, 184, 0.16), 0 4px 14px -1px rgba(79, 53, 184, 0.2);
   z-index: 20;
+}
+
+/* The district is the run-like architectural anchor for the star topology. */
+.node-card.central-hub {
+  border: 2px solid #4F46E5;
+  box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.12), 0 8px 18px rgba(79, 70, 229, 0.15);
+}
+
+.node-card.central-hub .node-icon-box {
+  background: #EEF2FF;
+  color: #4F46E5;
 }
 
 .node-card.dragging {
@@ -758,8 +770,9 @@ input {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--purple-brand);
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  color: var(--purple-brand);
   font-size: 10px;
   font-weight: 800;
   display: flex;
@@ -1036,7 +1049,9 @@ input {
   align-items: flex-start;
   justify-content: space-between;
   font-size: 11px;
-  padding: 3px 0;
+  padding: 7px 0;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .attr-key {
@@ -1058,6 +1073,7 @@ input {
   white-space: normal;
   word-break: break-word;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .evidence-link {

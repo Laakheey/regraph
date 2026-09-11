@@ -1,5 +1,4 @@
-const NODE_WIDTH = 220;
-const NODE_HEIGHT = 72;
+import { NODE_WIDTH, NODE_HEIGHT, getOrthogonalPath } from '../components/GraphCanvas';
 const MAX_CANVAS_Y = 960;
 
 // Color themes for SVG / Canvas node rendering
@@ -199,14 +198,13 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
     </g>
   `).join('');
 
+  const shiftedNodes = nodes.map((node) => ({ ...node, x: node.x + offsetX, y: node.y + offsetY }));
   const edgesSvg = matter.links.map(link => {
-    const fromNode = nodes.find(n => n.id === link.from);
-    const toNode = nodes.find(n => n.id === link.to);
+    const fromNode = shiftedNodes.find(n => n.id === link.from);
+    const toNode = shiftedNodes.find(n => n.id === link.to);
     if (!fromNode || !toNode) return '';
 
-    const shiftedFrom = { ...fromNode, x: fromNode.x + offsetX, y: fromNode.y + offsetY };
-    const shiftedTo = { ...toNode, x: toNode.x + offsetX, y: toNode.y + offsetY };
-    const p = getCurvedPathStatic(shiftedFrom, shiftedTo, 0);
+    const p = getOrthogonalPath(fromNode, toNode, link, matter.links, shiftedNodes);
 
     const category = link.category || (link.type === 'dashed-alert' ? 'alert' : 'structural');
     const isAlert = category === 'alert';
@@ -510,14 +508,13 @@ export const exportDiagramPng = ({ matter, nodes }) => {
     });
   }
 
+  const shiftedNodes = nodes.map((node) => ({ ...node, x: node.x + ox, y: node.y + oy }));
   matter.links.forEach(l => {
-    const fromNode = nodes.find(n => n.id === l.from);
-    const toNode = nodes.find(n => n.id === l.to);
+    const fromNode = shiftedNodes.find(n => n.id === l.from);
+    const toNode = shiftedNodes.find(n => n.id === l.to);
     if (!fromNode || !toNode) return;
 
-    const shiftedFrom = { ...fromNode, x: fromNode.x + ox, y: fromNode.y + oy };
-    const shiftedTo = { ...toNode, x: toNode.x + ox, y: toNode.y + oy };
-    const p = getCurvedPathStatic(shiftedFrom, shiftedTo, 0);
+    const p = getOrthogonalPath(fromNode, toNode, l, matter.links, shiftedNodes);
 
     const category = l.category || (l.type === 'dashed-alert' ? 'alert' : 'structural');
     const isAlert = category === 'alert';
@@ -535,21 +532,18 @@ export const exportDiagramPng = ({ matter, nodes }) => {
 
     ctx.beginPath();
     ctx.moveTo(p.startX, p.startY);
-    if (p.kind === 'orthogonal') {
-      p.points.forEach(([x, y]) => ctx.lineTo(x, y));
-    } else {
-      ctx.bezierCurveTo(p.cx1, p.cy1, p.cx2, p.cy2, p.endX, p.endY);
-    }
+    p.points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
     ctx.stroke();
 
-    const priorPoint = p.kind === 'orthogonal' ? p.points[p.points.length - 2] : [p.cx2, p.cy2];
-    const angle = Math.atan2(p.endY - priorPoint[1], p.endX - priorPoint[0]);
+    const priorPoint = p.points[p.points.length - 2];
+    const endPoint = p.points[p.points.length - 1];
+    const angle = Math.atan2(endPoint.y - priorPoint.y, endPoint.x - priorPoint.x);
     ctx.setLineDash([]);
     ctx.fillStyle = strokeColor;
     ctx.beginPath();
-    ctx.moveTo(p.endX, p.endY);
-    ctx.lineTo(p.endX - 9 * Math.cos(angle - Math.PI / 6), p.endY - 9 * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(p.endX - 9 * Math.cos(angle + Math.PI / 6), p.endY - 9 * Math.sin(angle + Math.PI / 6));
+    ctx.moveTo(endPoint.x, endPoint.y);
+    ctx.lineTo(endPoint.x - 9 * Math.cos(angle - Math.PI / 6), endPoint.y - 9 * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(endPoint.x - 9 * Math.cos(angle + Math.PI / 6), endPoint.y - 9 * Math.sin(angle + Math.PI / 6));
     ctx.closePath();
     ctx.fill();
 
