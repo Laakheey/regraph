@@ -11,6 +11,17 @@ const DOMAIN_NODE_IDS = {
 
 // Deterministic Manhattan routing: every segment is horizontal or vertical.
 export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
+  // The oversight question enters Evaluation Use from its bottom edge, keeping the
+  // final elbow inside the graph rather than out in the open right margin.
+  if (link.label === 'REVIEW / APPROVAL?' && to.id === 'evaluation') {
+    const start = { x: from.x + NODE_WIDTH / 2, y: from.y };
+    const end = { x: to.x + NODE_WIDTH / 2, y: to.y + NODE_HEIGHT };
+    const routeY = Math.max(from.y - 28, to.y + NODE_HEIGHT + 28);
+    const points = [start, { x: start.x, y: routeY }, { x: end.x, y: routeY }, end];
+    const d = points.reduce((path, point, index) => `${path}${index ? ` L ${point.x} ${point.y}` : `M ${point.x} ${point.y}`}`, '');
+    return { d, points, midX: (start.x + end.x) / 2, midY: routeY };
+  }
+
   const sideFor = (node, other) => {
     const dx = other.x + NODE_WIDTH / 2 - (node.x + NODE_WIDTH / 2);
     const dy = other.y + NODE_HEIGHT / 2 - (node.y + NODE_HEIGHT / 2);
@@ -183,7 +194,7 @@ export const GraphCanvas = ({
       .filter(Boolean);
     if (!members.length) return domain;
 
-    const minX = Math.min(...members.map((node) => node.x)) - 40;
+    const minX = Math.min(...members.map((node) => node.x)) - (domain.id === 'hisd-domain' ? 60 : 40);
     const minY = Math.min(...members.map((node) => node.y)) - 40;
     const maxX = Math.max(...members.map((node) => node.x + NODE_WIDTH)) + 40;
     const maxY = Math.max(...members.map((node) => node.y + NODE_HEIGHT)) + 40;
@@ -354,6 +365,7 @@ export const GraphCanvas = ({
             const badgePadding = 6;
             const badgeHeight = 14;
             const hw = link.label.length * 3.4 + badgePadding;
+            const priorityLabel = ['REQUESTED FROM', 'EMPLOYED BY', 'REVIEW / APPROVAL?'].includes(link.label);
 
             return (
               <g
@@ -367,7 +379,7 @@ export const GraphCanvas = ({
                   width={hw * 2}
                   height={badgeHeight}
                   rx={4}
-                  className={`edge-badge-rect ${badgeClass}`}
+                  className={`edge-badge-rect ${badgeClass} ${priorityLabel ? 'priority-edge-label' : ''}`}
                 />
                 <text
                   x={0}

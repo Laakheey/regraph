@@ -521,6 +521,12 @@ input {
   stroke: #E2E8F0;
 }
 
+/* Extra explicit backing for labels that cross the densest orthogonal tracks. */
+.edge-badge-rect.priority-edge-label {
+  fill: #ffffff;
+  stroke: #E2E8F0;
+}
+
 .edge-badge-text {
   font-family: var(--font-main);
   font-size: 9.5px;
