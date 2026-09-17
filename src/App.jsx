@@ -100,15 +100,30 @@ export const App = () => {
   const [isRunDetailsOpen, setIsRunDetailsOpen] = useState(false);
   const [isLegalAssistantOpen, setIsLegalAssistantOpen] = useState(false);
 
+  const getInitialView = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const z = params.get("zoom") ? parseFloat(params.get("zoom")) : 0.4;
+      const px = params.get("panX") ? parseFloat(params.get("panX")) : 15;
+      const py = params.get("panY") ? parseFloat(params.get("panY")) : 110;
+      return { zoom: z, pan: { x: px, y: py } };
+    } catch (e) {
+      return { zoom: 0.4, pan: { x: 15, y: 110 } };
+    }
+  };
+
   // Zoom and Pan Playground State
-  const [zoom, setZoom] = useState(0.4);
-  const [pan, setPan] = useState({ x: 15, y: 110 });
+  const initialView = getInitialView();
+  const [zoom, setZoom] = useState(initialView.zoom);
+  const [pan, setPan] = useState(initialView.pan);
 
   // Reset to Default Overview when matter changes
   useEffect(() => {
     setNodes(currentMatter.nodes);
     setSelectedNodeId(null);
-    handleFitView();
+    const init = getInitialView();
+    setZoom(init.zoom);
+    setPan(init.pan);
   }, [matterKey]);
 
   const handleZoomIn = () => {
@@ -120,8 +135,9 @@ export const App = () => {
   };
 
   const handleFitView = () => {
-    setZoom(0.4);
-    setPan({ x: 15, y: 110 });
+    const init = getInitialView();
+    setZoom(init.zoom);
+    setPan(init.pan);
   };
 
   // Reset to Default Full View (All elements 100% opacity, centered)

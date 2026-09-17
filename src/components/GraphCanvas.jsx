@@ -48,21 +48,22 @@ export const linkStyleFor = (link) => {
       markerStartId: "arrow-unresolved-start",
       color: "#64748B",
     };
-  if (["PART OF", "CONTRACTED WITH"].includes(link.label))
+  const normLabel = String(link.label || "").replaceAll("_", " ");
+  if (["PART OF", "CONTRACTED WITH"].includes(normLabel))
     return {
       lineClass: "edge-governance",
       markerId: "arrow-governance",
       markerStartId: "arrow-governance-start",
       color: "#334155",
     };
-  if (["USED ASSESSMENT", "PROVIDED DATA", "INPUTS"].includes(link.label))
+  if (["USED ASSESSMENT", "PROVIDED DATA", "INPUTS"].includes(normLabel))
     return {
       lineClass: "edge-input",
       markerId: "arrow-input",
       markerStartId: "arrow-input-start",
       color: "#2563EB",
     };
-  if (["USED SYSTEM", "GENERATED"].includes(link.label))
+  if (["USED SYSTEM", "GENERATED"].includes(normLabel))
     return {
       lineClass: "edge-processing",
       markerId: "arrow-processing",
@@ -70,7 +71,7 @@ export const linkStyleFor = (link) => {
       color: "#0891B2",
     };
   if (
-    ["REQUESTED FROM", "SOUGHT RECORDS", "FORMAL ISSUER?"].includes(link.label)
+    ["REQUESTED FROM", "SOUGHT RECORDS", "FORMAL ISSUER?"].includes(normLabel)
   )
     return {
       lineClass: "edge-legal",
@@ -126,21 +127,38 @@ export function processEdges(links, getNode) {
 
     // Detect reciprocal connection (Node A -> Node B and Node B -> Node A)
     let reciprocalIndex = -1;
-    for (let j = i + 1; j < validLinks.length; j++) {
-      if (consumed.has(j)) continue;
-      const linkB = validLinks[j];
-      const bFrom = linkB.from || linkB.source;
-      const bTo = linkB.to || linkB.target;
-      if (aFrom === bTo && aTo === bFrom) {
-        reciprocalIndex = j;
-        break;
+
+    // Guards:
+    // 1. Only "direct" edges may ever merge (refuse "gap", "trace", "unresolved")
+    // 2. Refuse if linkA has noMerge === true
+    if (!linkA.noMerge && linkA.kind === "direct") {
+      for (let j = i + 1; j < validLinks.length; j++) {
+        if (consumed.has(j)) continue;
+        const linkB = validLinks[j];
+        const bFrom = linkB.from || linkB.source;
+        const bTo = linkB.to || linkB.target;
+
+        // Guards:
+        // a. Opposite direction: aFrom === bTo && aTo === bFrom
+        // b. Refuse if linkA.kind !== linkB.kind
+        // c. Only "direct" edges (refuse "gap", "trace", "unresolved")
+        // d. Refuse if either has noMerge === true
+        if (
+          aFrom === bTo &&
+          aTo === bFrom &&
+          !linkB.noMerge &&
+          linkA.kind === linkB.kind &&
+          linkB.kind === "direct"
+        ) {
+          reciprocalIndex = j;
+          break;
+        }
       }
     }
 
     if (reciprocalIndex !== -1) {
       const linkB = validLinks[reciprocalIndex];
       consumed.add(reciprocalIndex);
-      consumed.add(i);
 
       const labelA = linkA.label || "";
       const labelB = linkB.label || "";
@@ -152,20 +170,22 @@ export function processEdges(links, getNode) {
         to: aTo,
         isBidirectional: true,
         label: mergedLabel,
+        rawLabel: linkA.label,
         reciprocalLink: linkB,
         involvedIds: [linkA.id, linkB.id],
       });
     } else {
-      consumed.add(i);
       processed.push({
         ...linkA,
         from: aFrom,
         to: aTo,
         isBidirectional: false,
+        rawLabel: linkA.label,
         involvedIds: [linkA.id],
       });
     }
   }
+  console.log({ processed: processed });
 
   return processed;
 }
@@ -196,6 +216,8 @@ export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
   const fromId = from.id;
   const toId = to.id;
 
+  const isVerticalSide = (side) => side === "top" || side === "bottom";
+
   const siblingsFrom = (allLinks || []).filter(
     (l) =>
       (l.from || l.source) === fromId &&
@@ -203,8 +225,11 @@ export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
   );
   const fromIndex = Math.max(0, siblingsFrom.indexOf(link));
   const fromCount = Math.max(1, siblingsFrom.length);
+  const fromStep = isVerticalSide(fromSide)
+    ? Math.min(100, Math.max(32, (fw - 48) / fromCount))
+    : Math.min(24, Math.max(16, (fh - 24) / fromCount));
   const fromPortOffset =
-    fromCount > 1 ? (fromIndex - (fromCount - 1) / 2) * 16 : 0;
+    fromCount > 1 ? (fromIndex - (fromCount - 1) / 2) * fromStep : 0;
 
   const siblingsTo = (allLinks || []).filter(
     (l) =>
@@ -213,7 +238,10 @@ export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
   );
   const toIndex = Math.max(0, siblingsTo.indexOf(link));
   const toCount = Math.max(1, siblingsTo.length);
-  const toPortOffset = toCount > 1 ? (toIndex - (toCount - 1) / 2) * 16 : 0;
+  const toStep = isVerticalSide(toSide)
+    ? Math.min(100, Math.max(32, (tw - 48) / toCount))
+    : Math.min(24, Math.max(16, (th - 24) / toCount));
+  const toPortOffset = toCount > 1 ? (toIndex - (toCount - 1) / 2) * toStep : 0;
 
   // Track offset for parallel links between the exact same pair of nodes
   const parallelLinks = (allLinks || []).filter((l) => {
@@ -299,9 +327,9 @@ export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
     (fromSide === "bottom" && toSide === "top") ||
     (fromSide === "top" && toSide === "bottom")
   ) {
-    if (Math.abs(start.x - end.x) < 2 && Math.abs(trackOffset) < 1) {
-      // Perfectly aligned vertical line
-      points = [start, end];
+    if (Math.abs(start.x - end.x) < 4) {
+      // Direct straight vertical line without 1px jog
+      points = [start, { x: start.x, y: end.y }];
     } else {
       const midY = (start.y + end.y) / 2 + trackOffset;
       points = [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
@@ -337,11 +365,20 @@ export function getOrthogonalPath(from, to, link, allLinks, allNodes) {
     return len > longestLen ? segment : longest;
   }, segments[0] || { start, end });
 
+  const isParallelVertical =
+    ((fromSide === "bottom" && toSide === "top") ||
+      (fromSide === "top" && toSide === "bottom")) &&
+    pTotal > 1;
+
+  const verticalStagger = isParallelVertical
+    ? (pIndex - (pTotal - 1) / 2) * 56
+    : 0;
+
   return {
     d,
     points,
     midX: (labelSegment.start.x + labelSegment.end.x) / 2,
-    midY: (labelSegment.start.y + labelSegment.end.y) / 2,
+    midY: (labelSegment.start.y + labelSegment.end.y) / 2 + verticalStagger,
   };
 }
 
@@ -925,14 +962,18 @@ export const GraphCanvas = ({
             const lx = pathInfo.midX;
             const ly = pathInfo.midY;
             // Labels sit on the router's longest dedicated segment with guaranteed white pill backing.
+            // Underscores converted to spaces at render time
+            const displayLabel = link.label
+              ? String(link.label).replaceAll("_", " ")
+              : "";
             const badgePadding = 10;
             const badgeHeight = 18;
-            const hw = link.label.length * 3.4 + badgePadding;
+            const hw = displayLabel.length * 3.4 + badgePadding;
             const priorityLabel = [
               "REQUESTED FROM",
               "EMPLOYED BY",
               "REVIEW / APPROVAL?",
-            ].includes(link.label);
+            ].includes(displayLabel);
 
             return (
               <g
@@ -955,7 +996,7 @@ export const GraphCanvas = ({
                   textAnchor="middle"
                   className={`edge-badge-text ${textClass}`}
                 >
-                  {link.label}
+                  {displayLabel}
                 </text>
               </g>
             );

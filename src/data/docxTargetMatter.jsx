@@ -99,7 +99,7 @@ const nodes = [
     62,
     "org",
     {
-      pages: "2, 9, 21-24",
+      pages: "2, 9, 21–24",
       role: "Employer and institutional data / appraisal actor",
     },
   ),
@@ -122,7 +122,7 @@ const nodes = [
     0,
     "assessment",
     {
-      pages: "9, 23-24",
+      pages: "9, 23–24",
       flag: "Alleged curriculum misalignment",
       model: "Assessment input",
     },
@@ -135,7 +135,7 @@ const nodes = [
     920,
     0,
     "resource",
-    { pages: "13-15", model: "Longitudinal standardized-test performance" },
+    { pages: "13–15", model: "Longitudinal standardized-test performance" },
   ),
   node(
     "evaas_report",
@@ -146,7 +146,7 @@ const nodes = [
     250,
     "system",
     {
-      pages: "13-15, 21-22, 24",
+      pages: "13–15, 21–22, 24",
       highlight: true,
       model: "EVAAS statistical output",
     },
@@ -160,7 +160,7 @@ const nodes = [
     250,
     "system",
     {
-      pages: "13-15, 21-22",
+      pages: "13–15, 21–22",
       flag: "Proprietary methodology access restricted",
       model: "Statistical analysis service",
     },
@@ -187,7 +187,7 @@ const nodes = [
     1258,
     43,
     "org",
-    { pages: "15-16, 20-24", role: "Contracting and authority actor" },
+    { pages: "15–16, 20–24", role: "Contracting and authority actor" },
   ),
   node(
     "evaas_gov",
@@ -197,7 +197,7 @@ const nodes = [
     1251,
     410,
     "resource",
-    { pages: "15-16", model: "Teacher appraisal system" },
+    { pages: "15–16", model: "Teacher appraisal system" },
   ),
   node(
     "hft",
@@ -217,7 +217,7 @@ const nodes = [
     1623,
     246,
     "action",
-    { pages: "20-21", checkpoint: "Individual administrator unresolved" },
+    { pages: "20–21", checkpoint: "Individual administrator unresolved" },
   ),
   node(
     "growth_plan",
@@ -247,7 +247,7 @@ const nodes = [
     1617,
     856,
     "alert",
-    { pages: "20-23", gapNode: true },
+    { pages: "20–23", gapNode: true },
   ),
 ];
 
@@ -262,12 +262,14 @@ const handles = {
   r9: ["top", "bottom"],
   r10: ["bottom", "top"],
   r11: ["bottom", "top"],
-  r12: ["left", "right"],
+  r12: ["left", "left"],
+  // r12: ["bottom", "top"],
+  r15: ["bottom", "top"],
   r17: ["right", "left"],
   r18: ["right", "left"],
   r20: ["top", "top"],
   r21: ["top", "top"],
-  r22: ["top", "top"],
+  r22: ["bottom", "bottom"],
   r24: ["bottom", "bottom"],
   r25: ["right", "top"],
   r26: ["top", "bottom"],
@@ -288,7 +290,7 @@ const relationship = (
   target,
   from: source,
   to: target,
-  label: label.replaceAll("_", " "),
+  label,
   kind,
   pages,
   category:
@@ -307,19 +309,19 @@ const links = [
   relationship("r1", "daniel", "hisd", "EMPLOYED_BY", "direct", "2"),
   relationship("r2", "daniel", "jackson", "TAUGHT_AT", "direct", "2"),
   relationship("r3", "jackson", "hisd", "PART_OF", "direct", "2"),
-  relationship("r4", "hisd", "stanford", "USED", "direct", "9, 23-24"),
-  relationship("r5", "hisd", "stanford", "USED", "condition", "23-24", {
+  relationship("r4", "hisd", "stanford", "USED", "direct", "9, 23–24"),
+  relationship("r5", "hisd", "stanford", "USED", "condition", "23–24", {
     chipOnly: true,
     note: "Alleged misalignment with required curriculum",
   }),
-  relationship("r6", "hisd", "sas", "PROVIDED_DATA_TO", "direct", "21-22"),
+  relationship("r6", "hisd", "sas", "PROVIDED_DATA_TO", "direct", "21–22"),
   relationship(
     "r7",
     "hisd_contract",
     "sas",
     "CONTRACTED_WITH",
     "direct",
-    "21-22",
+    "21–22",
   ),
   relationship(
     "r8",
@@ -327,7 +329,7 @@ const links = [
     "evaas_report",
     "GENERATED",
     "direct",
-    "13-15, 21-22",
+    "13–15, 21–22",
   ),
   relationship(
     "r9",
@@ -335,7 +337,7 @@ const links = [
     "testdata",
     "DERIVED_FROM",
     "direct",
-    "13-15",
+    "13–15",
   ),
   relationship(
     "r10",
@@ -345,28 +347,38 @@ const links = [
     "direct",
     "24",
   ),
-  relationship("r11", "hisd_contract", "evaas_gov", "USED", "direct", "15-16"),
+  relationship("r11", "hisd_contract", "evaas_gov", "USED", "direct", "15–16"),
+
   relationship(
     "r12",
-    "evaas_gov",
+    "evaas_report",
     "daniel_report",
     "USED_IN_EVALUATION_OF",
     "direct",
-    "16, 21",
+    "16–21",
   ),
+
+  // relationship(
+  //   "r12",
+  //   "evaas_report",
+  //   "daniel_report",
+  //   "USED_IN_EVALUATION_OF",
+  //   "direct",
+  //   "16, 21",
+  // ),
   relationship(
     "r13",
     "hisd_contract",
     "evaas_report",
     "USED",
     "direct",
-    "15-16, 20-21",
+    "15–16, 20–21",
     { chipOnly: true },
   ),
-  relationship("r14", "sas", "evaas_report", "GENERATED", "direct", "21-22", {
+  relationship("r14", "sas", "evaas_report", "GENERATED", "direct", "21–22", {
     chipOnly: true,
   }),
-  relationship("r15", "hisd_contract", "sas", "USED", "gap", "21-22", {
+  relationship("r15", "hisd_contract", "sas", "USED", "gap", "21–22", {
     note: "HISD did not independently verify SAS analysis",
   }),
   relationship(
@@ -375,7 +387,7 @@ const links = [
     "growth_plan",
     "USED",
     "direct",
-    "15-16",
+    "15–16",
     { chipOnly: true },
   ),
   relationship(
@@ -384,44 +396,44 @@ const links = [
     "observation",
     "USED",
     "direct",
-    "20-21",
+    "20–21",
   ),
+
   relationship(
     "r18",
-    "daniel_report",
+    "daniel",
     "growth_plan",
     "PLACED_ON",
     "direct",
     "16, 21",
     { highlight: true },
   ),
-  relationship(
-    "r19",
-    "growth_plan",
-    "daniel_report",
-    "CONSEQUENCE",
-    "direct",
-    "16",
-  ),
+  // relationship(
+  //   "r18",
+  //   "daniel_report",
+  //   "growth_plan",
+  //   "PLACED_ON",
+  //   "direct",
+  //   "16, 21",
+  //   { highlight: true },
+  // ),
+  relationship("r19", "growth_plan", "daniel_report", "—", "direct", "16", {
+    chipOnly: true,
+    noMerge: true,
+  }),
   relationship("r20", "hft", "hisd", "REQUESTED_FROM", "direct", "22"),
   relationship("r21", "hisd", "hft", "PROVIDED_TO", "direct", "22"),
-  relationship("r22", "hisd", "hft", "WITHHELD_FROM", "gap", "22-23"),
-  relationship(
-    "r23",
-    "sas",
-    "evaas_report",
-    "PROPRIETARY_CONTROL",
-    "direct",
-    "22",
-    { chipOnly: true },
-  ),
+  relationship("r22", "hisd", "hft", "WITHHELD_FROM", "gap", "22–23"),
+  relationship("r23", "sas", "evaas_report", "—", "direct", "22", {
+    chipOnly: true,
+  }),
   relationship(
     "r24",
     "sas",
     "evaas_report",
     "TRACE: Responsibility / Control candidate",
     "trace",
-    "13-15, 21-22",
+    "13–15, 21–22",
   ),
   relationship(
     "r25",
@@ -429,7 +441,7 @@ const links = [
     "growth_plan",
     "TRACE: Authority / Control / Responsibility candidate",
     "trace",
-    "15-16, 20-24",
+    "15–16, 20–24",
   ),
   relationship(
     "r26",
@@ -445,7 +457,7 @@ const links = [
     "daniel_report",
     "TRACE: unresolved",
     "unresolved",
-    "20-23",
+    "20–23",
   ),
 ];
 
@@ -476,15 +488,19 @@ export const DOCX_TARGET_MATTER = {
   })),
   nodes,
   links,
-  sequence: links
-    .filter((link) => !link.chipOnly)
-    .slice(0, 8)
-    .map((link, index) => ({
-      step: index + 1,
-      title: link.label,
-      time: `Complaint pp. ${link.pages}`,
-      nodeId: link.target,
-      icon: "action",
-      isAlert: ["gap", "unresolved"].includes(link.kind),
-    })),
+  sequence: links.map((link, index) => ({
+    step: index + 1,
+    id: link.id,
+    title: String(link.label).replaceAll("_", " "),
+    rawLabel: link.label,
+    time: `Complaint pp. ${link.pages}`,
+    source: link.source || link.from,
+    target: link.target || link.to,
+    nodeId: link.target || link.to,
+    kind: link.kind,
+    chipOnly: !!link.chipOnly,
+    icon:
+      link.kind === "gap" || link.kind === "unresolved" ? "alert" : "action",
+    isAlert: ["gap", "unresolved"].includes(link.kind),
+  })),
 };

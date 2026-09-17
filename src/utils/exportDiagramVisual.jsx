@@ -424,12 +424,14 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
         />
         ${
           link.label
-            ? `
+            ? (() => {
+                const displayLabel = String(link.label).replaceAll("_", " ");
+                return `
           <g transform="translate(${p.midX}, ${p.midY})">
             <rect
-              x="${-(link.label.length * 3.4 + 10)}"
+              x="${-(displayLabel.length * 3.4 + 10)}"
               y="-9"
-              width="${link.label.length * 6.8 + 20}"
+              width="${displayLabel.length * 6.8 + 20}"
               height="18"
               rx="4"
               fill="${badgeFill}"
@@ -444,9 +446,10 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
               font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif"
               font-size="10"
               font-weight="700"
-            >${link.label}</text>
+            >${displayLabel}</text>
           </g>
-        `
+        `;
+              })()
             : ""
         }
       </g>
@@ -612,7 +615,7 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
           <div class="meta-area">
             <div>Captured: <b>${exportDate}</b></div>
             <div>Layout State: <b>4-Column Left-to-Right Architecture</b></div>
-            <div>Total Nodes: <b>${nodes.length}</b> | Edges: <b>${visibleLinks.length}</b></div>
+            <div>Total Nodes: <b>${nodes.length}</b> | Relationships: <b>${(matter.links || []).length}</b></div>
           </div>
         </div>
 
@@ -843,7 +846,8 @@ export const exportDiagramPng = ({ matter, nodes }) => {
     }
 
     if (l.label) {
-      const textWidth = l.label.length * 6.6;
+      const displayLabel = String(l.label).replaceAll("_", " ");
+      const textWidth = displayLabel.length * 6.6;
       const bw = textWidth + 16;
       const bh = 18;
 
@@ -858,7 +862,7 @@ export const exportDiagramPng = ({ matter, nodes }) => {
       ctx.font = "bold 9.5px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(l.label, p.midX, p.midY);
+      ctx.fillText(displayLabel, p.midX, p.midY);
     }
     ctx.restore();
   });
