@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Icon } from './Icons';
+import React, { useState } from "react";
+import { Icon } from "./Icons";
 
 export const LegendAndControls = ({
   zoom,
@@ -11,7 +11,7 @@ export const LegendAndControls = ({
   onExportReportPdf,
   onExportDiagramPdf,
   onExportDiagramPng,
-  nodes
+  nodes,
 }) => {
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -26,14 +26,14 @@ export const LegendAndControls = ({
   };
 
   const legendItems = [
-    { label: 'Person', color: '#ec4899' },
-    { label: 'School / Org', color: '#06b6d4' },
-    { label: 'Assessment', color: '#16a34a' },
-    { label: 'System Engine', color: '#0d9488' },
-    { label: 'Data Record', color: '#1e293b' },
-    { label: 'Appraisal Act', color: '#2563eb' },
-    { label: 'Human Gap', color: '#ea580c' },
-    { label: 'Consequence', color: '#ea580c' }
+    { label: "Person", color: "#ec4899" },
+    { label: "School / Org", color: "#06b6d4" },
+    { label: "Assessment", color: "#16a34a" },
+    { label: "System Engine", color: "#0d9488" },
+    { label: "Data Record", color: "#1e293b" },
+    { label: "Appraisal Act", color: "#2563eb" },
+    { label: "Human Gap", color: "#ea580c" },
+    { label: "Consequence", color: "#ea580c" },
   ];
 
   return (
@@ -42,7 +42,10 @@ export const LegendAndControls = ({
         <div className="legend-chips">
           {legendItems.map((item) => (
             <span key={item.label} className="legend-chip">
-              <span className="legend-dot" style={{ backgroundColor: item.color }} />
+              <span
+                className="legend-dot"
+                style={{ backgroundColor: item.color }}
+              />
               <span className="legend-chip-label">{item.label}</span>
             </span>
           ))}
@@ -52,7 +55,7 @@ export const LegendAndControls = ({
       <div className="canvas-controls">
         {/* Reset / Overview Button */}
         <button
-          className={`control-btn overview-btn ${!selectedNodeId ? 'is-active-overview' : ''}`}
+          className={`control-btn overview-btn ${!selectedNodeId ? "is-active-overview" : ""}`}
           onClick={onResetOverview}
           title="Reset to Default Overview State (Show all nodes at 100% full opacity)"
         >
@@ -125,7 +128,11 @@ export const LegendAndControls = ({
           </button>
         </div>
 
-        <button className="control-btn fit-btn" onClick={onFitView} title="Fit entire graph to screen">
+        <button
+          className="control-btn fit-btn"
+          onClick={onFitView}
+          title="Fit entire graph to screen"
+        >
           <Icon name="fit" size={13} />
         </button>
       </div>

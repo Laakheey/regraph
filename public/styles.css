@@ -496,6 +496,15 @@ input {
   stroke-dasharray: 5 4;
 }
 
+.edge-path.edge-governance { stroke: #334155; stroke-width: 2px; }
+.edge-path.edge-input { stroke: #2563EB; stroke-width: 2px; }
+.edge-path.edge-processing { stroke: #0891B2; stroke-width: 2px; }
+.edge-path.edge-legal { stroke: #EA580C; stroke-width: 2px; stroke-dasharray: 6 4; }
+.edge-path.edge-condition { stroke: #E0507A; stroke-width: 2px; stroke-dasharray: 5 4; }
+.edge-path.edge-gap { stroke: #D9531E; stroke-width: 2px; stroke-dasharray: 5 4; }
+.edge-path.edge-trace { stroke: #7C4FE0; stroke-width: 2px; stroke-dasharray: 3 4; }
+.edge-path.edge-unresolved { stroke: #64748B; stroke-width: 2px; stroke-dasharray: 2 5; }
+
 .edge-path:hover {
   stroke-width: 2.8;
 }
@@ -504,27 +513,29 @@ input {
 .edge-badge-rect {
   stroke-width: 1;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.10));
+  fill: #ffffff;
+  stroke: #CBD5E1;
 }
 
 .edge-badge-rect.badge-structural {
   fill: #ffffff;
-  stroke: #E2E8F0;
+  stroke: #CBD5E1;
 }
 
 .edge-badge-rect.badge-pipeline {
   fill: #ffffff;
-  stroke: #E2E8F0;
+  stroke: #CBD5E1;
 }
 
 .edge-badge-rect.badge-alert {
   fill: #ffffff;
-  stroke: #E2E8F0;
+  stroke: #CBD5E1;
 }
 
 /* Extra explicit backing for labels that cross the densest orthogonal tracks. */
 .edge-badge-rect.priority-edge-label {
   fill: #ffffff;
-  stroke: #E2E8F0;
+  stroke: #CBD5E1;
 }
 
 .edge-badge-text {
@@ -534,6 +545,8 @@ input {
   letter-spacing: -0.1px;
   pointer-events: none;
 }
+
+.edge-badge-group { z-index: 50; }
 
 .edge-badge-text.text-structural {
   fill: #334155;
@@ -561,6 +574,20 @@ input {
   box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.07);
   transition: box-shadow 0.12s, border-color 0.12s, transform 0.08s;
   z-index: 10;
+}
+
+.node-resize-handle {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border: 0;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
+  background: transparent;
+  cursor: nwse-resize;
 }
 
 .node-card:hover {
@@ -1317,6 +1344,8 @@ input {
 
 .evidence-modal {
   max-width: 680px;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 40px);
 }
 
 .modal-header {

@@ -1,76 +1,217 @@
-import { NODE_WIDTH, NODE_HEIGHT, getOrthogonalPath } from '../components/GraphCanvas';
+import {
+  NODE_WIDTH,
+  NODE_HEIGHT,
+  getOrthogonalPath,
+  processEdges,
+  linkStyleFor,
+} from "../components/GraphCanvas";
 const MAX_CANVAS_Y = 960;
+const nodeWidth = (node) => node.width || NODE_WIDTH;
+const nodeHeight = (node) => node.height || NODE_HEIGHT;
+
+// Canvas does not wrap text automatically.  Exported cards use this helper so
+// their labels honour the same visual boundary as the on-screen node cards.
+function wrapCanvasText(ctx, value, maxWidth) {
+  const words = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return [];
+
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(candidate).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawWrappedCanvasText(
+  ctx,
+  value,
+  x,
+  y,
+  maxWidth,
+  lineHeight,
+  maxLines,
+) {
+  const lines = wrapCanvasText(ctx, value, maxWidth).slice(0, maxLines);
+  lines.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight));
+  return lines.length;
+}
 
 // Color themes for SVG / Canvas node rendering
 const THEMES = {
-  person: { border: '#fbcfe8', bg: '#ffffff', iconBg: '#fdf2f8', iconColor: '#ec4899', symbol: '👤' },
-  org: { border: '#a5f3fc', bg: '#ffffff', iconBg: '#ecfeff', iconColor: '#0891b2', symbol: '🏛️' },
-  assessment: { border: '#bbf7d0', bg: '#ffffff', iconBg: '#f0fdf4', iconColor: '#16a34a', symbol: '📋' },
-  system: { border: '#99f6e4', bg: '#ffffff', iconBg: '#f0fdfa', iconColor: '#0d9488', symbol: '⚙️' },
-  resource: { border: '#cbd5e1', bg: '#ffffff', iconBg: '#f1f5f9', iconColor: '#1e293b', symbol: '📄' },
-  action: { border: '#bfdbfe', bg: '#ffffff', iconBg: '#eff6ff', iconColor: '#2563eb', symbol: '⚡' },
-  alert: { border: '#fde68a', bg: '#fffdf5', iconBg: '#fefce8', iconColor: '#d97706', symbol: '⚠️' },
-  governance: { border: '#fed7aa', bg: '#ffffff', iconBg: '#fff7ed', iconColor: '#ea580c', symbol: '⚖️' },
-  'agent-run': { border: '#e9d5ff', bg: '#ffffff', iconBg: '#faf5ff', iconColor: '#9333ea', symbol: '🤖' },
-  model: { border: '#ddd6fe', bg: '#ffffff', iconBg: '#f5f3ff', iconColor: '#8b5cf6', symbol: '🧠' },
-  workflow: { border: '#d9f99d', bg: '#ffffff', iconBg: '#f7fee7', iconColor: '#65a30d', symbol: '🔄' }
+  person: {
+    border: "#fbcfe8",
+    bg: "#ffffff",
+    iconBg: "#fdf2f8",
+    iconColor: "#ec4899",
+    symbol: "👤",
+  },
+  org: {
+    border: "#a5f3fc",
+    bg: "#ffffff",
+    iconBg: "#ecfeff",
+    iconColor: "#0891b2",
+    symbol: "🏛️",
+  },
+  assessment: {
+    border: "#bbf7d0",
+    bg: "#ffffff",
+    iconBg: "#f0fdf4",
+    iconColor: "#16a34a",
+    symbol: "📋",
+  },
+  system: {
+    border: "#99f6e4",
+    bg: "#ffffff",
+    iconBg: "#f0fdfa",
+    iconColor: "#0d9488",
+    symbol: "⚙️",
+  },
+  resource: {
+    border: "#cbd5e1",
+    bg: "#ffffff",
+    iconBg: "#f1f5f9",
+    iconColor: "#1e293b",
+    symbol: "📄",
+  },
+  action: {
+    border: "#bfdbfe",
+    bg: "#ffffff",
+    iconBg: "#eff6ff",
+    iconColor: "#2563eb",
+    symbol: "⚡",
+  },
+  alert: {
+    border: "#fde68a",
+    bg: "#fffdf5",
+    iconBg: "#fefce8",
+    iconColor: "#d97706",
+    symbol: "⚠️",
+  },
+  governance: {
+    border: "#fed7aa",
+    bg: "#ffffff",
+    iconBg: "#fff7ed",
+    iconColor: "#ea580c",
+    symbol: "⚖️",
+  },
+  "agent-run": {
+    border: "#e9d5ff",
+    bg: "#ffffff",
+    iconBg: "#faf5ff",
+    iconColor: "#9333ea",
+    symbol: "🤖",
+  },
+  model: {
+    border: "#ddd6fe",
+    bg: "#ffffff",
+    iconBg: "#f5f3ff",
+    iconColor: "#8b5cf6",
+    symbol: "🧠",
+  },
+  workflow: {
+    border: "#d9f99d",
+    bg: "#ffffff",
+    iconBg: "#f7fee7",
+    iconColor: "#65a30d",
+    symbol: "🔄",
+  },
 };
 
 export function getCurvedPathStatic(from, to, offset = 0) {
   // 1. score → santos: SHORT direct vertical — Santos directly above Score in Col 4
-  if (from.id === 'score' && to.id === 'santos') {
+  if (from.id === "score" && to.id === "santos") {
     const startX = from.x + NODE_WIDTH / 2;
     const startY = from.y;
-    const endX   = to.x + NODE_WIDTH / 2;
-    const endY   = to.y + NODE_HEIGHT + 4;
-    const dy     = Math.max(startY - endY, 20);
+    const endX = to.x + NODE_WIDTH / 2;
+    const endY = to.y + NODE_HEIGHT + 4;
+    const dy = Math.max(startY - endY, 20);
     const cx1 = startX;
     const cy1 = startY - dy * 0.5;
     const cx2 = endX;
     const cy2 = endY + dy * 0.5;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
+    const d = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
+    const midX = 0.125 * startX + 0.375 * cx1 + 0.375 * cx2 + 0.125 * endX;
+    const midY = 0.125 * startY + 0.375 * cy1 + 0.375 * cy2 + 0.125 * endY;
     return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
   }
 
   // 2. santos → jackson-ms: orthogonal route through the open lane between rows.
-  if (from.id === 'santos' && to.id === 'jackson-ms') {
+  if (from.id === "santos" && to.id === "jackson-ms") {
     const startX = from.x;
     const startY = from.y + NODE_HEIGHT;
-    const endX   = to.x + NODE_WIDTH / 2;
-    const endY   = to.y - 6;
+    const endX = to.x + NODE_WIDTH / 2;
+    const endY = to.y - 6;
     const routeX = from.x - 50;
     const laneY = 170 + (from.y - 0);
     const d = `M ${startX} ${startY} H ${routeX} V ${laneY} H ${endX} V ${endY}`;
-    return { d, startX, startY, endX, endY, midX: (routeX + endX) / 2, midY: laneY, kind: 'orthogonal', points: [[routeX, startY], [routeX, laneY], [endX, laneY], [endX, endY]] };
+    return {
+      d,
+      startX,
+      startY,
+      endX,
+      endY,
+      midX: (routeX + endX) / 2,
+      midY: laneY,
+      kind: "orthogonal",
+      points: [
+        [routeX, startY],
+        [routeX, laneY],
+        [endX, laneY],
+        [endX, endY],
+      ],
+    };
   }
 
   // 3. hft → hisd: curve RIGHT then UP, skirting around jackson-ms right border cleanly
-  if (from.id === 'hft' && to.id === 'hisd') {
+  if (from.id === "hft" && to.id === "hisd") {
     const startX = from.x + NODE_WIDTH;
     const startY = from.y + NODE_HEIGHT / 2;
-    const endX   = to.x;
-    const endY   = to.y + NODE_HEIGHT / 2;
+    const endX = to.x;
+    const endY = to.y + NODE_HEIGHT / 2;
     const cx1 = startX + 160;
     const cy1 = startY + 60;
     const cx2 = endX - 60;
     const cy2 = endY + 80;
-    const d    = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
-    const midX = 0.125*startX + 0.375*cx1 + 0.375*cx2 + 0.125*endX;
-    const midY = 0.125*startY + 0.375*cy1 + 0.375*cy2 + 0.125*endY;
+    const d = `M ${startX} ${startY} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${endX} ${endY}`;
+    const midX = 0.125 * startX + 0.375 * cx1 + 0.375 * cx2 + 0.125 * endX;
+    const midY = 0.125 * startY + 0.375 * cy1 + 0.375 * cy2 + 0.125 * endY;
     return { d, startX, startY, endX, endY, cx1, cy1, cx2, cy2, midX, midY };
   }
 
   // 4. hft → disclosure: orthogonal footer route.
-  if (from.id === 'hft' && to.id === 'disclosure') {
+  if (from.id === "hft" && to.id === "disclosure") {
     const startX = from.x + NODE_WIDTH / 2;
     const startY = from.y + NODE_HEIGHT;
-    const endX   = to.x + NODE_WIDTH / 2;
-    const endY   = to.y + NODE_HEIGHT;
+    const endX = to.x + NODE_WIDTH / 2;
+    const endY = to.y + NODE_HEIGHT;
     const footerY = MAX_CANVAS_Y - 20 + (from.y - 350);
     const d = `M ${startX} ${startY} V ${footerY} H ${endX} V ${endY}`;
-    return { d, startX, startY, endX, endY, midX: (startX + endX) / 2, midY: footerY, kind: 'orthogonal', points: [[startX, footerY], [endX, footerY], [endX, endY]] };
+    return {
+      d,
+      startX,
+      startY,
+      endX,
+      endY,
+      midX: (startX + endX) / 2,
+      midY: footerY,
+      kind: "orthogonal",
+      points: [
+        [startX, footerY],
+        [endX, footerY],
+        [endX, endY],
+      ],
+    };
   }
 
   const isLtoR = to.x >= from.x + 80;
@@ -130,22 +271,27 @@ export function getCurvedPathStatic(from, to, offset = 0) {
 }
 
 export const exportDiagramVisualPdf = ({ matter, nodes }) => {
-  const printWindow = window.open('', '_blank', 'width=1380,height=980');
+  const printWindow = window.open("", "_blank", "width=1380,height=980");
   if (!printWindow) {
-    alert('Please allow popups to open the Visual Diagram snapshot.');
+    alert("Please allow popups to open the Visual Diagram snapshot.");
     return;
   }
 
-  let minX = 99999, minY = 99999, maxX = -99999, maxY = -99999;
-  nodes.forEach(n => {
+  const visibleLinks = (matter.links || []).filter((link) => !link.chipOnly);
+
+  let minX = 99999,
+    minY = 99999,
+    maxX = -99999,
+    maxY = -99999;
+  nodes.forEach((n) => {
     if (n.x < minX) minX = n.x;
     if (n.y < minY) minY = n.y;
-    if (n.x + NODE_WIDTH > maxX) maxX = n.x + NODE_WIDTH;
-    if (n.y + NODE_HEIGHT > maxY) maxY = n.y + NODE_HEIGHT;
+    if (n.x + nodeWidth(n) > maxX) maxX = n.x + nodeWidth(n);
+    if (n.y + nodeHeight(n) > maxY) maxY = n.y + nodeHeight(n);
   });
 
   if (matter.domains) {
-    matter.domains.forEach(d => {
+    matter.domains.forEach((d) => {
       if (d.x < minX) minX = d.x;
       if (d.y < minY) minY = d.y;
       if (d.x + d.w > maxX) maxX = d.x + d.w;
@@ -159,12 +305,14 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
   const offsetX = pad - minX;
   const offsetY = pad - minY;
 
-  const exportDate = new Date().toLocaleString('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
+  const exportDate = new Date().toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 
-  const domainsSvg = (matter.domains || []).map(d => `
+  const domainsSvg = (matter.domains || [])
+    .map(
+      (d) => `
     <g class="domain-svg">
       <rect
         x="${d.x + offsetX}"
@@ -196,29 +344,74 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
         letter-spacing="0.4px"
       >${d.name}</text>
     </g>
-  `).join('');
+  `,
+    )
+    .join("");
 
-  const shiftedNodes = nodes.map((node) => ({ ...node, x: node.x + offsetX, y: node.y + offsetY }));
-  const edgesSvg = matter.links.map(link => {
-    const fromNode = shiftedNodes.find(n => n.id === link.from);
-    const toNode = shiftedNodes.find(n => n.id === link.to);
-    if (!fromNode || !toNode) return '';
+  const shiftedNodes = nodes.map((node) => ({
+    ...node,
+    x: node.x + offsetX,
+    y: node.y + offsetY,
+  }));
+  const getNodeShifted = (id) => shiftedNodes.find((n) => n.id === id);
+  const processedLinks = processEdges(visibleLinks, getNodeShifted);
+  const edgesSvg = processedLinks
+    .map((link) => {
+      const fromNode = getNodeShifted(link.from);
+      const toNode = getNodeShifted(link.to);
+      if (!fromNode || !toNode) return "";
 
-    const p = getOrthogonalPath(fromNode, toNode, link, matter.links, shiftedNodes);
+      const p = getOrthogonalPath(
+        fromNode,
+        toNode,
+        link,
+        processedLinks,
+        shiftedNodes,
+      );
+      const { markerId, markerStartId } = linkStyleFor(link);
 
-    const category = link.category || (link.type === 'dashed-alert' ? 'alert' : 'structural');
-    const isAlert = category === 'alert';
-    const isPipeline = category === 'pipeline';
+      const category = link.category || "structural";
+      const isAlert = category === "alert";
+      const isPipeline = category === "pipeline";
 
-    const strokeColor = isAlert ? '#ea580c' : isPipeline ? '#0284c7' : '#475569';
-    const markerUrl = isAlert ? 'url(#arrow-alert)' : isPipeline ? 'url(#arrow-pipeline)' : 'url(#arrow-structural)';
-    const dashArray = isAlert ? '5 4' : 'none';
+      const strokeColor =
+        link.kind === "condition"
+          ? "#E0507A"
+          : link.kind === "gap"
+            ? "#D9531E"
+            : link.kind === "trace"
+              ? "#7C4FE0"
+              : link.kind === "unresolved"
+                ? "#64748B"
+                : isAlert
+                  ? "#ea580c"
+                  : isPipeline
+                    ? "#0284c7"
+                    : "#475569";
+      const markerUrl = `url(#${markerId})`;
+      const markerStartUrl = link.isBidirectional
+        ? `url(#${markerStartId})`
+        : "";
+      const dashArray =
+        ["condition", "alert"].includes(link.kind) || isAlert
+          ? "5 4"
+          : link.kind === "gap"
+            ? "6 4"
+            : link.kind === "trace"
+              ? "4 4"
+              : link.kind === "unresolved"
+                ? "3 4"
+                : "none";
 
-    const badgeFill = '#ffffff';
-    const badgeStroke = isAlert ? '#fed7aa' : isPipeline ? '#bae6fd' : '#cbd5e1';
-    const textColor = isAlert ? '#c2410c' : isPipeline ? '#0369a1' : '#334155';
+      const badgeFill = "#ffffff";
+      const badgeStroke = "#cbd5e1";
+      const textColor = isAlert
+        ? "#c2410c"
+        : isPipeline
+          ? "#0369a1"
+          : "#334155";
 
-    return `
+      return `
       <g class="edge-group">
         <path
           d="${p.d}"
@@ -227,14 +420,17 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
           stroke-width="1.8"
           stroke-dasharray="${dashArray}"
           marker-end="${markerUrl}"
+          ${markerStartUrl ? `marker-start="${markerStartUrl}"` : ""}
         />
-        ${link.label ? `
+        ${
+          link.label
+            ? `
           <g transform="translate(${p.midX}, ${p.midY})">
             <rect
-              x="${-(link.label.length * 3.4 + 6)}"
-              y="-7"
-              width="${link.label.length * 6.8 + 12}"
-              height="14"
+              x="${-(link.label.length * 3.4 + 10)}"
+              y="-9"
+              width="${link.label.length * 6.8 + 20}"
+              height="18"
               rx="4"
               fill="${badgeFill}"
               stroke="${badgeStroke}"
@@ -250,20 +446,24 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
               font-weight="700"
             >${link.label}</text>
           </g>
-        ` : ''}
+        `
+            : ""
+        }
       </g>
     `;
-  }).join('');
+    })
+    .join("");
 
-  const nodesHtml = nodes.map(n => {
-    const theme = THEMES[n.kind] || THEMES.resource;
-    return `
+  const nodesHtml = nodes
+    .map((n) => {
+      const theme = THEMES[n.kind] || THEMES.resource;
+      return `
       <div style="
         position: absolute;
         left: ${n.x + offsetX}px;
         top: ${n.y + offsetY}px;
-        width: ${NODE_WIDTH}px;
-        min-height: ${NODE_HEIGHT}px;
+        width: ${nodeWidth(n)}px;
+        min-height: ${nodeHeight(n)}px;
         background: #ffffff;
         border: 1.5px solid ${theme.border};
         border-radius: 10px;
@@ -273,6 +473,7 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
         gap: 10px;
         box-shadow: 0 3px 8px rgba(0,0,0,0.06);
         box-sizing: border-box;
+        overflow: hidden;
       ">
         <div style="
           width: 32px;
@@ -286,15 +487,17 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
           flex-shrink: 0;
           font-weight: 800;
           font-size: 14px;
-        ">${theme.symbol || '✦'}</div>
-        <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+        ">${theme.symbol || "✦"}</div>
+        <div style="min-width: 0; flex: 1; max-width: calc(100% - 42px); display: flex; flex-direction: column; justify-content: center; overflow: hidden;">
           <b style="
             display: block;
             font-size: 12px;
             font-weight: 700;
             color: #0f172a;
             line-height: 1.3;
+            overflow-wrap: anywhere;
             word-break: break-word;
+            max-width: 100%;
           ">${n.label}</b>
           <span style="
             display: block;
@@ -302,12 +505,15 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
             color: #64748b;
             line-height: 1.25;
             margin-top: 2px;
+            overflow-wrap: anywhere;
             word-break: break-word;
+            max-width: 100%;
           ">${n.sub}</span>
         </div>
       </div>
     `;
-  }).join('');
+    })
+    .join("");
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -406,7 +612,7 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
           <div class="meta-area">
             <div>Captured: <b>${exportDate}</b></div>
             <div>Layout State: <b>4-Column Left-to-Right Architecture</b></div>
-            <div>Total Nodes: <b>${nodes.length}</b> | Edges: <b>${matter.links.length}</b></div>
+            <div>Total Nodes: <b>${nodes.length}</b> | Edges: <b>${visibleLinks.length}</b></div>
           </div>
         </div>
 
@@ -422,7 +628,29 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
               <marker id="arrow-alert" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
                 <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#ea580c" />
               </marker>
+              <marker id="arrow-governance" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#334155" /></marker>
+              <marker id="arrow-input" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#2563EB" /></marker>
+              <marker id="arrow-processing" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#0891B2" /></marker>
+              <marker id="arrow-legal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#EA580C" /></marker>
+              <marker id="arrow-condition" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#E0507A" /></marker>
+              <marker id="arrow-gap" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#D9531E" /></marker>
+              <marker id="arrow-trace" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#7C4FE0" /></marker>
+              <marker id="arrow-unresolved" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#64748B" /></marker>
+
+              {/* Start markers for bidirectional edges */}
+              <marker id="arrow-structural-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#475569" /></marker>
+              <marker id="arrow-pipeline-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#0284c7" /></marker>
+              <marker id="arrow-alert-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#ea580c" /></marker>
+              <marker id="arrow-governance-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#334155" /></marker>
+              <marker id="arrow-input-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#2563EB" /></marker>
+              <marker id="arrow-processing-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#0891B2" /></marker>
+              <marker id="arrow-legal-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#EA580C" /></marker>
+              <marker id="arrow-condition-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#E0507A" /></marker>
+              <marker id="arrow-gap-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#D9531E" /></marker>
+              <marker id="arrow-trace-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#7C4FE0" /></marker>
+              <marker id="arrow-unresolved-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 8.5 1.5 L 0 5 L 8.5 8.5 z" fill="#64748B" /></marker>
             </defs>
+
             ${domainsSvg}
             ${edgesSvg}
           </svg>
@@ -441,16 +669,20 @@ export const exportDiagramVisualPdf = ({ matter, nodes }) => {
 };
 
 export const exportDiagramPng = ({ matter, nodes }) => {
-  let minX = 99999, minY = 99999, maxX = -99999, maxY = -99999;
-  nodes.forEach(n => {
+  const visibleLinks = (matter.links || []).filter((link) => !link.chipOnly);
+  let minX = 99999,
+    minY = 99999,
+    maxX = -99999,
+    maxY = -99999;
+  nodes.forEach((n) => {
     if (n.x < minX) minX = n.x;
     if (n.y < minY) minY = n.y;
-    if (n.x + NODE_WIDTH > maxX) maxX = n.x + NODE_WIDTH;
-    if (n.y + NODE_HEIGHT > maxY) maxY = n.y + NODE_HEIGHT;
+    if (n.x + nodeWidth(n) > maxX) maxX = n.x + nodeWidth(n);
+    if (n.y + nodeHeight(n) > maxY) maxY = n.y + nodeHeight(n);
   });
 
   if (matter.domains) {
-    matter.domains.forEach(d => {
+    matter.domains.forEach((d) => {
       if (d.x < minX) minX = d.x;
       if (d.y < minY) minY = d.y;
       if (d.x + d.w > maxX) maxX = d.x + d.w;
@@ -464,17 +696,17 @@ export const exportDiagramPng = ({ matter, nodes }) => {
   const ox = pad - minX;
   const oy = pad - minY;
 
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   const dpr = 2;
   canvas.width = w * dpr;
   canvas.height = h * dpr;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
 
-  ctx.fillStyle = '#fafbfe';
+  ctx.fillStyle = "#fafbfe";
   ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = '#cbd5e1';
+  ctx.fillStyle = "#cbd5e1";
   for (let x = 10; x < w; x += 20) {
     for (let y = 10; y < h; y += 20) {
       ctx.beginPath();
@@ -484,12 +716,12 @@ export const exportDiagramPng = ({ matter, nodes }) => {
   }
 
   if (matter.domains) {
-    matter.domains.forEach(d => {
+    matter.domains.forEach((d) => {
       ctx.save();
-      ctx.strokeStyle = d.borderColor || '#9382e2';
+      ctx.strokeStyle = d.borderColor || "#9382e2";
       ctx.lineWidth = 1.8;
       ctx.setLineDash([6, 4]);
-      ctx.fillStyle = 'rgba(245, 243, 255, 0.35)';
+      ctx.fillStyle = "rgba(245, 243, 255, 0.35)";
       const dx = d.x + ox;
       const dy = d.y + oy;
       roundRect(ctx, dx, dy, d.w, d.h, 16);
@@ -497,60 +729,123 @@ export const exportDiagramPng = ({ matter, nodes }) => {
       ctx.stroke();
 
       ctx.setLineDash([]);
-      ctx.fillStyle = d.badgeBg || '#4f35b8';
+      ctx.fillStyle = d.badgeBg || "#4f35b8";
       roundRect(ctx, dx + d.w / 2 - 58, dy - 13, 116, 26, 6);
       ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.textAlign = 'center';
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
       ctx.fillText(d.name, dx + d.w / 2, dy + 4);
       ctx.restore();
     });
   }
 
-  const shiftedNodes = nodes.map((node) => ({ ...node, x: node.x + ox, y: node.y + oy }));
-  matter.links.forEach(l => {
-    const fromNode = shiftedNodes.find(n => n.id === l.from);
-    const toNode = shiftedNodes.find(n => n.id === l.to);
+  const shiftedNodes = nodes.map((node) => ({
+    ...node,
+    x: node.x + ox,
+    y: node.y + oy,
+  }));
+  const getNodeShifted = (id) => shiftedNodes.find((n) => n.id === id);
+  const processedLinks = processEdges(visibleLinks, getNodeShifted);
+  processedLinks.forEach((l) => {
+    const fromNode = getNodeShifted(l.from);
+    const toNode = getNodeShifted(l.to);
     if (!fromNode || !toNode) return;
 
-    const p = getOrthogonalPath(fromNode, toNode, l, matter.links, shiftedNodes);
+    const p = getOrthogonalPath(
+      fromNode,
+      toNode,
+      l,
+      processedLinks,
+      shiftedNodes,
+    );
 
-    const category = l.category || (l.type === 'dashed-alert' ? 'alert' : 'structural');
-    const isAlert = category === 'alert';
-    const isPipeline = category === 'pipeline';
+    const category =
+      l.category || (l.type === "dashed-alert" ? "alert" : "structural");
+    const isAlert = category === "alert";
+    const isPipeline = category === "pipeline";
 
-    const strokeColor = isAlert ? '#ea580c' : isPipeline ? '#0284c7' : '#475569';
-    const badgeFill = '#ffffff';
-    const badgeStroke = isAlert ? '#fed7aa' : isPipeline ? '#bae6fd' : '#cbd5e1';
-    const textColor = isAlert ? '#c2410c' : isPipeline ? '#0369a1' : '#334155';
+    const strokeColor =
+      l.kind === "condition"
+        ? "#E0507A"
+        : l.kind === "gap"
+          ? "#D9531E"
+          : l.kind === "trace"
+            ? "#7C4FE0"
+            : l.kind === "unresolved"
+              ? "#64748B"
+              : isAlert
+                ? "#ea580c"
+                : isPipeline
+                  ? "#0284c7"
+                  : "#475569";
+    const badgeFill = "#ffffff";
+    const badgeStroke = "#cbd5e1";
+    const textColor = isAlert ? "#c2410c" : isPipeline ? "#0369a1" : "#334155";
 
     ctx.save();
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 1.8;
-    if (isAlert) ctx.setLineDash([5, 4]);
+    if (["condition", "alert"].includes(l.kind) || isAlert)
+      ctx.setLineDash([5, 4]);
+    else if (l.kind === "gap") ctx.setLineDash([6, 4]);
+    else if (l.kind === "trace") ctx.setLineDash([4, 4]);
+    else if (l.kind === "unresolved") ctx.setLineDash([3, 4]);
+    else ctx.setLineDash([]);
 
     ctx.beginPath();
-    ctx.moveTo(p.startX, p.startY);
+    ctx.moveTo(p.points[0].x, p.points[0].y);
     p.points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
     ctx.stroke();
 
+    // End Arrowhead
     const priorPoint = p.points[p.points.length - 2];
     const endPoint = p.points[p.points.length - 1];
-    const angle = Math.atan2(endPoint.y - priorPoint.y, endPoint.x - priorPoint.x);
+    const angle = Math.atan2(
+      endPoint.y - priorPoint.y,
+      endPoint.x - priorPoint.x,
+    );
     ctx.setLineDash([]);
     ctx.fillStyle = strokeColor;
     ctx.beginPath();
     ctx.moveTo(endPoint.x, endPoint.y);
-    ctx.lineTo(endPoint.x - 9 * Math.cos(angle - Math.PI / 6), endPoint.y - 9 * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(endPoint.x - 9 * Math.cos(angle + Math.PI / 6), endPoint.y - 9 * Math.sin(angle + Math.PI / 6));
+    ctx.lineTo(
+      endPoint.x - 9 * Math.cos(angle - Math.PI / 6),
+      endPoint.y - 9 * Math.sin(angle - Math.PI / 6),
+    );
+    ctx.lineTo(
+      endPoint.x - 9 * Math.cos(angle + Math.PI / 6),
+      endPoint.y - 9 * Math.sin(angle + Math.PI / 6),
+    );
     ctx.closePath();
     ctx.fill();
 
+    // Start Arrowhead for Bidirectional Edges
+    if (l.isBidirectional && p.points.length >= 2) {
+      const startPoint = p.points[0];
+      const nextPoint = p.points[1];
+      const startAngle = Math.atan2(
+        startPoint.y - nextPoint.y,
+        startPoint.x - nextPoint.x,
+      );
+      ctx.beginPath();
+      ctx.moveTo(startPoint.x, startPoint.y);
+      ctx.lineTo(
+        startPoint.x - 9 * Math.cos(startAngle - Math.PI / 6),
+        startPoint.y - 9 * Math.sin(startAngle - Math.PI / 6),
+      );
+      ctx.lineTo(
+        startPoint.x - 9 * Math.cos(startAngle + Math.PI / 6),
+        startPoint.y - 9 * Math.sin(startAngle + Math.PI / 6),
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
     if (l.label) {
       const textWidth = l.label.length * 6.6;
-      const bw = textWidth + 12;
-      const bh = 14;
+      const bw = textWidth + 16;
+      const bh = 18;
 
       ctx.fillStyle = badgeFill;
       ctx.strokeStyle = badgeStroke;
@@ -560,24 +855,24 @@ export const exportDiagramPng = ({ matter, nodes }) => {
       ctx.stroke();
 
       ctx.fillStyle = textColor;
-      ctx.font = 'bold 9.5px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.font = "bold 9.5px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(l.label, p.midX, p.midY);
     }
     ctx.restore();
   });
 
-  nodes.forEach(n => {
+  nodes.forEach((n) => {
     const theme = THEMES[n.kind] || THEMES.resource;
     const nx = n.x + ox;
     const ny = n.y + oy;
 
     ctx.save();
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1.5;
-    roundRect(ctx, nx, ny, NODE_WIDTH, NODE_HEIGHT, 10);
+    roundRect(ctx, nx, ny, nodeWidth(n), nodeHeight(n), 10);
     ctx.fill();
     ctx.stroke();
 
@@ -586,26 +881,47 @@ export const exportDiagramPng = ({ matter, nodes }) => {
     ctx.fill();
 
     ctx.fillStyle = theme.iconColor;
-    ctx.font = 'bold 13px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('✦', nx + 26, ny + 28);
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("✦", nx + 26, ny + 28);
 
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 11.5px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(n.label, nx + 50, ny + 27);
+    const textX = nx + 50;
+    const textWidth = Math.max(nodeWidth(n) - 62, 40);
+    const titleLineHeight = 12;
+    const subtitleLineHeight = 10;
 
-    ctx.fillStyle = '#64748b';
-    ctx.font = '9.5px sans-serif';
-    ctx.fillText(n.sub, nx + 50, ny + 43);
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 10.8px sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    const titleLines = drawWrappedCanvasText(
+      ctx,
+      n.label,
+      textX,
+      ny + 23,
+      textWidth,
+      titleLineHeight,
+      2,
+    );
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "9px sans-serif";
+    drawWrappedCanvasText(
+      ctx,
+      n.sub,
+      textX,
+      ny + 25 + titleLines * titleLineHeight,
+      textWidth,
+      subtitleLineHeight,
+      2,
+    );
     ctx.restore();
   });
 
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.download = `${matter.id}_Visual_Diagram.png`;
-  link.href = canvas.toDataURL('image/png');
+  link.href = canvas.toDataURL("image/png");
   link.click();
 };
 

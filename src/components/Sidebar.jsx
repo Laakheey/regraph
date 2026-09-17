@@ -1,13 +1,17 @@
-import React from 'react';
-import { Icon } from './Icons';
+import React from "react";
+import { Icon } from "./Icons";
 
-export const Sidebar = ({ activeView = 'agent-activity', onSelectView }) => {
+export const Sidebar = ({ activeView = "agent-activity", onSelectView }) => {
   const navItems = [
-    { id: 'matter-view', label: 'Matter View', icon: 'org' },
-    { id: 'agent-activity', label: 'Agent Activity', icon: 'agent-run' },
-    { id: 'evidence', label: 'Evidence', icon: 'assessment' },
-    { id: 'authority-control', label: 'Authority & Control', icon: 'governance' },
-    { id: 'timeline', label: 'Timeline', icon: 'resource' }
+    { id: "matter-view", label: "Matter View", icon: "org" },
+    { id: "agent-activity", label: "Agent Activity", icon: "agent-run" },
+    { id: "evidence", label: "Evidence", icon: "assessment" },
+    {
+      id: "authority-control",
+      label: "Authority & Control",
+      icon: "governance",
+    },
+    { id: "timeline", label: "Timeline", icon: "resource" },
   ];
 
   return (
@@ -17,10 +21,12 @@ export const Sidebar = ({ activeView = 'agent-activity', onSelectView }) => {
         {navItems.map((item) => (
           <button
             key={item.id}
-            className={`nav-item ${activeView === item.id ? 'active' : ''}`}
+            className={`nav-item ${activeView === item.id ? "active" : ""}`}
             onClick={() => onSelectView && onSelectView(item.id)}
           >
-            <span className="nav-icon"><Icon name={item.icon} size={16} /></span>
+            <span className="nav-icon">
+              <Icon name={item.icon} size={16} />
+            </span>
             {item.label}
           </button>
         ))}
@@ -30,13 +36,15 @@ export const Sidebar = ({ activeView = 'agent-activity', onSelectView }) => {
         <button
           className="collapse-btn"
           onClick={() => {
-            if (activeView !== 'agent-activity') {
-              onSelectView && onSelectView('agent-activity');
+            if (activeView !== "agent-activity") {
+              onSelectView && onSelectView("agent-activity");
             }
           }}
           title="Return to primary canvas"
         >
-          {activeView === 'agent-activity' ? '« Canvas Active' : '« Return to Graph'}
+          {activeView === "agent-activity"
+            ? "« Canvas Active"
+            : "« Return to Graph"}
         </button>
       </div>
     </aside>

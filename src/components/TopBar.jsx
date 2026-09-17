@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Icon } from './Icons';
+import React, { useState } from "react";
+import { Icon } from "./Icons";
 
 export const TopBar = ({
   currentMatter,
@@ -7,9 +7,9 @@ export const TopBar = ({
   matterList,
   onExportDiagramPdf,
   onExportReportPdf,
-  searchQuery = '',
+  searchQuery = "",
   onSearchChange,
-  onOpenLegalAssistant
+  onOpenLegalAssistant,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -38,7 +38,7 @@ export const TopBar = ({
             {matterList.map((m) => (
               <button
                 key={m.id}
-                className={`dropdown-item ${m.id === currentMatter.id ? 'active' : ''}`}
+                className={`dropdown-item ${m.id === currentMatter.id ? "active" : ""}`}
                 onClick={() => {
                   onSelectMatter(m.id);
                   setDropdownOpen(false);
@@ -64,7 +64,7 @@ export const TopBar = ({
         {searchQuery ? (
           <button
             className="search-clear-btn"
-            onClick={() => onSearchChange && onSearchChange('')}
+            onClick={() => onSearchChange && onSearchChange("")}
             title="Clear search"
           >
             ✕
@@ -95,13 +95,21 @@ export const TopBar = ({
         <button
           className="icon-btn"
           title="Investigation Notifications"
-          onClick={() => alert('TRACE Investigation: 4 critical responsibility gaps detected in Daniel Santos appraisal pathway.')}
+          onClick={() =>
+            alert(
+              "TRACE Investigation: 4 critical responsibility gaps detected in Daniel Santos appraisal pathway.",
+            )
+          }
         >
           <Icon name="bell" size={16} />
           <span className="badge-dot" />
         </button>
 
-        <div className="avatar" onClick={onOpenLegalAssistant} style={{ cursor: 'pointer' }}>
+        <div
+          className="avatar"
+          onClick={onOpenLegalAssistant}
+          style={{ cursor: "pointer" }}
+        >
           LA
         </div>
 

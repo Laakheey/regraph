@@ -1,16 +1,18 @@
 export const exportPdfSnapshot = ({ matter, nodes, selectedNode }) => {
-  const printWindow = window.open('', '_blank', 'width=1200,height=900');
+  const printWindow = window.open("", "_blank", "width=1200,height=900");
   if (!printWindow) {
-    alert('Please allow popups for this site to export the PDF snapshot.');
+    alert("Please allow popups for this site to export the PDF snapshot.");
     return;
   }
 
-  const exportDate = new Date().toLocaleString('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
+  const exportDate = new Date().toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 
-  const nodesHtml = nodes.map(n => `
+  const nodesHtml = nodes
+    .map(
+      (n) => `
     <div style="
       display: inline-block;
       vertical-align: top;
@@ -25,26 +27,32 @@ export const exportPdfSnapshot = ({ matter, nodes, selectedNode }) => {
       <div style="font-size: 11px; font-weight: 800; color: #0f172a;">${n.label}</div>
       <div style="font-size: 9.5px; color: #64748b; margin-top: 2px;">${n.sub}</div>
       <div style="margin-top: 6px; font-size: 9px; color: #334155; border-top: 1px solid #f1f5f9; padding-top: 4px;">
-        <b>Role:</b> ${n.assignedTask || 'N/A'}<br/>
-        <b>Status:</b> ${n.status || 'Active'}<br/>
+        <b>Role:</b> ${n.assignedTask || "N/A"}<br/>
+        <b>Status:</b> ${n.status || "Active"}<br/>
         <b>Coord:</b> (${n.x}, ${n.y})
       </div>
     </div>
-  `).join('');
+  `,
+    )
+    .join("");
 
-  const linksHtml = matter.links.map(l => {
-    const fromNode = nodes.find(n => n.id === l.from);
-    const toNode = nodes.find(n => n.id === l.to);
-    return `
+  const linksHtml = matter.links
+    .map((l) => {
+      const fromNode = nodes.find((n) => n.id === l.from);
+      const toNode = nodes.find((n) => n.id === l.to);
+      return `
       <tr>
         <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${fromNode ? fromNode.label : l.from}</td>
-        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #4f35b8; font-weight: 700; font-size: 10px;">${l.label || 'CONNECTS TO'}</td>
+        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; color: #4f35b8; font-weight: 700; font-size: 10px;">${l.label || "CONNECTS TO"}</td>
         <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${toNode ? toNode.label : l.to}</td>
       </tr>
     `;
-  }).join('');
+    })
+    .join("");
 
-  const sequenceHtml = matter.sequence.map(s => `
+  const sequenceHtml = matter.sequence
+    .map(
+      (s) => `
     <div style="
       display: inline-block;
       vertical-align: top;
@@ -59,7 +67,9 @@ export const exportPdfSnapshot = ({ matter, nodes, selectedNode }) => {
       <div style="font-weight: 700; font-size: 10px; color: #0f172a; margin-top: 2px;">${s.title}</div>
       <div style="font-size: 8.5px; color: #64748b;">${s.time}</div>
     </div>
-  `).join('');
+  `,
+    )
+    .join("");
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -188,7 +198,9 @@ export const exportPdfSnapshot = ({ matter, nodes, selectedNode }) => {
           </tbody>
         </table>
 
-        ${selectedNode && selectedNode.trace ? `
+        ${
+          selectedNode && selectedNode.trace
+            ? `
           <div class="section-title">4. Focused TRACE Findings · ${selectedNode.label}</div>
           <table class="table">
             <thead>
@@ -221,7 +233,9 @@ export const exportPdfSnapshot = ({ matter, nodes, selectedNode }) => {
               </tr>
             </tbody>
           </table>
-        ` : ''}
+        `
+            : ""
+        }
 
         <script>
           setTimeout(() => {

@@ -1,33 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { INCIDENTS } from './data/incidentsData';
-import { TopBar } from './components/TopBar';
-import { Sidebar } from './components/Sidebar';
-import { GraphCanvas } from './components/GraphCanvas';
-import { SequenceTrack } from './components/SequenceTrack';
-import { LegendAndControls } from './components/LegendAndControls';
-import { Inspector } from './components/Inspector';
-import { MatterView } from './components/MatterView';
-import { EvidenceView } from './components/EvidenceView';
-import { AuthorityControlView } from './components/AuthorityControlView';
-import { TimelineView } from './components/TimelineView';
-import { RunDetailsModal } from './components/RunDetailsModal';
-import { LegalAssistantModal } from './components/LegalAssistantModal';
-import { exportPdfSnapshot } from './utils/exportPdfSnapshot';
-import { exportDiagramVisualPdf, exportDiagramPng } from './utils/exportDiagramVisual';
+import React, { useState, useEffect } from "react";
+import { DOCX_TARGET_MATTER } from "./data/docxTargetMatter";
+import { TopBar } from "./components/TopBar";
+import { Sidebar } from "./components/Sidebar";
+import { GraphCanvas } from "./components/GraphCanvas";
+import { SequenceTrack } from "./components/SequenceTrack";
+import { LegendAndControls } from "./components/LegendAndControls";
+import { Inspector } from "./components/Inspector";
+import { MatterView } from "./components/MatterView";
+import { EvidenceView } from "./components/EvidenceView";
+import { AuthorityControlView } from "./components/AuthorityControlView";
+import { TimelineView } from "./components/TimelineView";
+import { RunDetailsModal } from "./components/RunDetailsModal";
+import { LegalAssistantModal } from "./components/LegalAssistantModal";
+import { exportPdfSnapshot } from "./utils/exportPdfSnapshot";
+import {
+  exportDiagramVisualPdf,
+  exportDiagramPng,
+} from "./utils/exportDiagramVisual";
+
+export const PANELS = [
+  {
+    id: "entities",
+    x: -40,
+    y: -50,
+    width: 590,
+    height: 520,
+    label: "Entities & Actors",
+    accent: "#2F6FED",
+    tint: "#EEF3FE",
+  },
+  {
+    id: "data",
+    x: 570,
+    y: -50,
+    width: 700,
+    height: 700,
+    label: "Data & Algorithmic Flow",
+    accent: "#7C4FE0",
+    tint: "#F3EEFC",
+  },
+  {
+    id: "governance",
+    x: 1250,
+    y: -50,
+    width: 350,
+    height: 700,
+    label: "Governance & Institutional Actions",
+    accent: "#DB8A21",
+    tint: "#FDF3E4",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// HANDLES — Explicit ReactFlow handle routing so each edge leaves/enters the
+// correct side of its source/target node card.
+// Entries copied from prototype App.jsx + new forensic edges e14–e17.
+// ---------------------------------------------------------------------------
+export const HANDLES = {
+  // ── Original prototype entries ───────────────────────────────────────────
+  e1: { s: "right", t: "left" },
+  e2: { s: "bottom", t: "top" },
+  e3: { s: "right", t: "bottom" },
+  e4: { s: "right", t: "left" },
+  e5: { s: "bottom", t: "top" },
+  e6: { s: "right", t: "left" },
+  e7: { s: "top", t: "left" },
+  e9: { s: "left", t: "right" },
+  e10: { s: "bottom", t: "top" },
+  e11: { s: "bottom", t: "top" },
+  e12: { s: "left", t: "right" },
+  e13: { s: "bottom", t: "top" },
+  e8: { s: "bottom", t: "top" },
+  // ── New forensic edges (e14–e17) ─────────────────────────────────────────
+  e14: { s: "right", t: "top" }, // hft → sas   (SOUGHT_RECORDS)
+  e15: { s: "bottom", t: "top" }, // hft → daniel (REPRESENTS)
+  e16: { s: "bottom", t: "top" }, // evaas_gov → growth_plan (PLACED_ON)
+  e17: { s: "bottom", t: "top" }, // sas → disclosure_gap (PARTIAL/WITHHELD)
+};
 
 export const App = () => {
-  const [matterKey, setMatterKey] = useState('hft-santos');
-  const currentMatter = INCIDENTS[matterKey] || Object.values(INCIDENTS)[0];
+  // This release exposes the active Responsibility Path only.  Keeping the
+  // matter map local preserves the existing selector and state transitions.
+  const MATTERS = { [DOCX_TARGET_MATTER.id]: DOCX_TARGET_MATTER };
+  const [matterKey, setMatterKey] = useState(DOCX_TARGET_MATTER.id);
+  const currentMatter = MATTERS[matterKey] || DOCX_TARGET_MATTER;
 
   const [nodes, setNodes] = useState(currentMatter.nodes);
   // Default Overview State: null (Show all elements at 100% full opacity)
   const [selectedNodeId, setSelectedNodeId] = useState(null);
 
   // Active View State (Left Navigation Bar)
-  const [activeView, setActiveView] = useState('agent-activity');
+  const [activeView, setActiveView] = useState("agent-activity");
 
   // Real-time Global Search Query
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Slide-over & Modal Overlays
   const [runDetailsNode, setRunDetailsNode] = useState(null);
@@ -35,7 +101,7 @@ export const App = () => {
   const [isLegalAssistantOpen, setIsLegalAssistantOpen] = useState(false);
 
   // Zoom and Pan Playground State
-  const [zoom, setZoom] = useState(0.52);
+  const [zoom, setZoom] = useState(0.4);
   const [pan, setPan] = useState({ x: 15, y: 110 });
 
   // Reset to Default Overview when matter changes
@@ -54,7 +120,7 @@ export const App = () => {
   };
 
   const handleFitView = () => {
-    setZoom(0.52);
+    setZoom(0.4);
     setPan({ x: 15, y: 110 });
   };
 
@@ -67,7 +133,7 @@ export const App = () => {
   const handleSearchChange = (query) => {
     setSearchQuery(query);
     // Search always targets the graph view, where matching nodes and edges are filtered.
-    if (query.trim()) setActiveView('agent-activity');
+    if (query.trim()) setActiveView("agent-activity");
   };
 
   // Export 1: Full structured legal investigation report PDF
@@ -76,7 +142,7 @@ export const App = () => {
     exportPdfSnapshot({
       matter: currentMatter,
       nodes,
-      selectedNode: selected
+      selectedNode: selected,
     });
   };
 
@@ -84,7 +150,7 @@ export const App = () => {
   const handleExportDiagramPdf = () => {
     exportDiagramVisualPdf({
       matter: currentMatter,
-      nodes
+      nodes,
     });
   };
 
@@ -92,21 +158,28 @@ export const App = () => {
   const handleExportDiagramPng = () => {
     exportDiagramPng({
       matter: currentMatter,
-      nodes
+      nodes,
     });
   };
 
   const handleOpenRunDetails = (node) => {
-    setRunDetailsNode(node || (selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : nodes[0]));
+    setRunDetailsNode(
+      node ||
+        (selectedNodeId
+          ? nodes.find((n) => n.id === selectedNodeId)
+          : nodes[0]),
+    );
     setIsRunDetailsOpen(true);
   };
 
-  const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
+  const selectedNode = selectedNodeId
+    ? nodes.find((n) => n.id === selectedNodeId)
+    : null;
 
-  const matterList = Object.values(INCIDENTS).map((m) => ({
+  const matterList = Object.values(MATTERS).map((m) => ({
     id: m.id,
     title: m.title,
-    subtitle: m.subtitle
+    subtitle: m.subtitle,
   }));
 
   return (
@@ -132,13 +205,10 @@ export const App = () => {
         />
 
         <div className="workspace-body">
-          <Sidebar
-            activeView={activeView}
-            onSelectView={setActiveView}
-          />
+          <Sidebar activeView={activeView} onSelectView={setActiveView} />
 
           {/* Conditional View Router */}
-          {activeView === 'agent-activity' && (
+          {activeView === "agent-activity" && (
             <>
               <main className="center-viewport">
                 <GraphCanvas
@@ -186,31 +256,31 @@ export const App = () => {
             </>
           )}
 
-          {activeView === 'matter-view' && (
+          {activeView === "matter-view" && (
             <MatterView
               matter={currentMatter}
-              onBackToCanvas={() => setActiveView('agent-activity')}
+              onBackToCanvas={() => setActiveView("agent-activity")}
             />
           )}
 
-          {activeView === 'evidence' && (
+          {activeView === "evidence" && (
             <EvidenceView
               matter={currentMatter}
-              onBackToCanvas={() => setActiveView('agent-activity')}
+              onBackToCanvas={() => setActiveView("agent-activity")}
             />
           )}
 
-          {activeView === 'authority-control' && (
+          {activeView === "authority-control" && (
             <AuthorityControlView
               matter={currentMatter}
-              onBackToCanvas={() => setActiveView('agent-activity')}
+              onBackToCanvas={() => setActiveView("agent-activity")}
             />
           )}
 
-          {activeView === 'timeline' && (
+          {activeView === "timeline" && (
             <TimelineView
               matter={currentMatter}
-              onBackToCanvas={() => setActiveView('agent-activity')}
+              onBackToCanvas={() => setActiveView("agent-activity")}
             />
           )}
         </div>
