@@ -1,0 +1,129 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-09-18T11:45:00.000Z",
+  "nodes": [
+    {
+      "id": "boundary-core",
+      "type": "mvBoundary",
+      "position": { "x": -50, "y": -30 },
+      "data": {
+        "name": "Core Evaluation Domain",
+        "accent": "#2F6FED",
+        "tint": "#EEF3FE",
+        "fillOpacity": 0.3
+      },
+      "style": { "width": 650, "height": 380 },
+      "zIndex": -1
+    },
+    {
+      "id": "node-teacher",
+      "type": "mvCard",
+      "position": { "x": 0, "y": 50 },
+      "data": {
+        "title": "Daniel Santos",
+        "subtitle": "Teacher (HISD)",
+        "icon": "person",
+        "accent": "#2F6FED",
+        "group": "boundary-core",
+        "gapNode": false,
+        "detail": {
+          "fact": "6th grade social studies teacher at Jackson Middle School.",
+          "significance": "Subject of EVAAS appraisal report.",
+          "gap": "",
+          "pages": "2, 16"
+        }
+      }
+    },
+    {
+      "id": "node-district",
+      "type": "mvCard",
+      "position": { "x": 350, "y": 50 },
+      "data": {
+        "title": "Houston ISD",
+        "subtitle": "School District",
+        "icon": "institution",
+        "accent": "#DB8A21",
+        "group": "boundary-core",
+        "gapNode": false,
+        "detail": {
+          "fact": "Employing authority and district appraisal actor.",
+          "significance": "Enforces growth plan.",
+          "gap": "",
+          "pages": "2, 21-24"
+        }
+      }
+    },
+    {
+      "id": "node-evaas",
+      "type": "mvCard",
+      "position": { "x": 175, "y": 220 },
+      "data": {
+        "title": "EVAAS Report",
+        "subtitle": "Teacher Value-Added Score",
+        "icon": "gear",
+        "accent": "#7C4FE0",
+        "group": "boundary-core",
+        "gapNode": false,
+        "detail": {
+          "fact": "Proprietary scoring model output.",
+          "significance": "Basis for high-stakes employment decisions.",
+          "gap": "Restricted methodology access.",
+          "pages": "13-15"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "source": "node-teacher",
+      "target": "node-district",
+      "sourceHandle": "right-s",
+      "targetHandle": "left-t",
+      "type": "mvEdge",
+      "data": {
+        "label": "EMPLOYED_BY",
+        "kind": "direct",
+        "bidirectional": false,
+        "lineStyle": "solid",
+        "color": "#475569",
+        "note": "Formal employment relationship",
+        "pages": "2"
+      }
+    },
+    {
+      "id": "edge-2",
+      "source": "node-district",
+      "target": "node-evaas",
+      "sourceHandle": "bottom-s",
+      "targetHandle": "top-t",
+      "type": "mvEdge",
+      "data": {
+        "label": "PROCURED",
+        "kind": "direct",
+        "bidirectional": false,
+        "lineStyle": "solid",
+        "color": "#475569",
+        "note": "District contracted with vendor",
+        "pages": "15-16"
+      }
+    },
+    {
+      "id": "edge-3",
+      "source": "node-evaas",
+      "target": "node-teacher",
+      "sourceHandle": "left-s",
+      "targetHandle": "bottom-t",
+      "type": "mvEdge",
+      "data": {
+        "label": "EVALUATED",
+        "kind": "condition",
+        "bidirectional": false,
+        "lineStyle": "dashed",
+        "color": "#E0507A",
+        "note": "High-stakes impact based on EVAAS",
+        "pages": "16, 21"
+      }
+    }
+  ]
+}
